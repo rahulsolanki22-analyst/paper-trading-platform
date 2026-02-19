@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+yfinance
+pandas
+sqlalchemy
+joblib
+scikit-learn
+xgboost
+requests
+python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+email-validator

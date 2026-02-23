@@ -153,6 +153,4 @@ ai-paper-trading-platform/
 - Missing prices/FX: yfinance rate limits occasionally; retry
 - DB issues: for dev, recreate `paper_trading.db` if schema corrupt
 
-## License
-MIT (or project-specific; update as needed)
 

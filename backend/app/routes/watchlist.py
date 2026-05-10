@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.watchlist import Watchlist, PriceAlert
 from app.services.market_data import get_live_price
+from app.services.fx import detect_currency, fx_to_inr_rate
 from app.utils.auth import get_db, get_current_user
 from datetime import datetime
 import logging
@@ -25,12 +26,19 @@ def get_watchlist(
     
     result = []
     for item in items:
-        current_price = get_live_price(item.symbol)
+        native_price = float(get_live_price(item.symbol))
+        native_currency = detect_currency(item.symbol)
+        fx_rate = fx_to_inr_rate(native_currency)
+        current_price_inr = native_price * fx_rate
         result.append({
             "id": item.id,
             "symbol": item.symbol,
             "notes": item.notes,
-            "current_price": round(current_price, 2),
+            # Native + INR prices for UI (Option C)
+            "native_currency": native_currency,
+            "native_price": round(native_price, 4),
+            "fx_to_inr": round(fx_rate, 6),
+            "current_price_inr": round(current_price_inr, 2),
             "added_at": item.added_at.isoformat() if item.added_at else None
         })
     
@@ -56,9 +64,13 @@ def add_to_watchlist(
         raise HTTPException(status_code=400, detail="Stock already in watchlist")
     
     # Verify symbol is valid by checking price
-    price = get_live_price(symbol)
-    if price == 0:
+    native_price = float(get_live_price(symbol))
+    if native_price == 0:
         raise HTTPException(status_code=400, detail="Invalid stock symbol")
+
+    native_currency = detect_currency(symbol)
+    fx_rate = fx_to_inr_rate(native_currency)
+    current_price_inr = native_price * fx_rate
     
     item = Watchlist(
         user_id=current_user.id,
@@ -71,7 +83,10 @@ def add_to_watchlist(
     return {
         "message": "Added to watchlist",
         "symbol": symbol.upper(),
-        "current_price": round(price, 2)
+        "native_currency": native_currency,
+        "native_price": round(native_price, 4),
+        "fx_to_inr": round(fx_rate, 6),
+        "current_price_inr": round(current_price_inr, 2),
     }
 
 

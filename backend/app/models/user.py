@@ -19,6 +19,7 @@ class User(Base):
     portfolio_snapshots = relationship("PortfolioSnapshot", back_populates="user", cascade="all, delete-orphan")
     watchlist_items = relationship("Watchlist", back_populates="user", cascade="all, delete-orphan")
     price_alerts = relationship("PriceAlert", back_populates="user", cascade="all, delete-orphan")
+    markets_stocks = relationship("MarketsStock", back_populates="user", cascade="all, delete-orphan")
     pending_orders = relationship("PendingOrder", back_populates="user", cascade="all, delete-orphan")
     bot_config = relationship("BotConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
 

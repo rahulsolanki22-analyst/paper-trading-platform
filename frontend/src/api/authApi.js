@@ -9,9 +9,11 @@ export const register = async (username, email, password) => {
   return res.data;
 };
 
-export const login = async (username, password) => {
+export const login = async (email, password) => {
   const formData = new URLSearchParams();
-  formData.append("username", username);
+  // Backend uses OAuth2PasswordRequestForm; field name is "username" by spec.
+  // We send the user's email in that field.
+  formData.append("username", email);
   formData.append("password", password);
 
   const res = await axios.post("/auth/login", formData, {
@@ -28,6 +30,11 @@ export const getCurrentUser = async (token) => {
       Authorization: `Bearer ${token}`,
     },
   });
+  return res.data;
+};
+
+export const fetchMe = async () => {
+  const res = await axios.get("/auth/me");
   return res.data;
 };
 

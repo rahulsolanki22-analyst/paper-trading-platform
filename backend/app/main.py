@@ -9,7 +9,7 @@ from app.database import Base, engine
 from app.routes import (
     market, portfolio, trading, indicators, signals,
     backtest, dataset, ml_signal, search, news,
-    valuation, reset, stocks, auth,
+    valuation, reset, stocks, auth, markets,
     analytics, watchlist, alerts, ai_features
 )
 # Import models to ensure tables are created (import without name conflict)
@@ -21,7 +21,8 @@ from app.models import (
     portfolio_snapshot as snapshot_model,
     watchlist as watchlist_model,
     pending_order as pending_order_model,
-    bot_config as bot_model
+    bot_config as bot_model,
+    markets_stock as markets_stock_model
 )
 
 load_dotenv()
@@ -82,6 +83,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
+app.include_router(markets.router, prefix="/markets", tags=["markets"])
 app.include_router(market.router, prefix="/market")
 app.include_router(portfolio.router, prefix="/portfolio")
 app.include_router(trading.router, prefix="/trade")

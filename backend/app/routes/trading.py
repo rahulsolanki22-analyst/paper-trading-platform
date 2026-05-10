@@ -6,6 +6,7 @@ from app.models.trade import Trade
 from app.models.order import OrderHistory
 from app.models.pending_order import PendingOrder
 from app.services.market_data import fetch_stock_data, get_live_price
+from app.services.fx import detect_currency, fx_to_inr_rate
 from app.services.risk import check_stop_loss
 from app.utils.auth import get_db, get_current_user
 from datetime import datetime
@@ -48,7 +49,10 @@ def buy_stock(
                 )
         else:
             price = float(hist["Close"].iloc[-1])
-        total_cost = price * quantity
+        native_currency = detect_currency(symbol)
+        fx_rate = fx_to_inr_rate(native_currency)
+        price_inr = price * fx_rate
+        total_cost = price_inr * quantity
 
         if total_cost > portfolio.balance:
             raise HTTPException(status_code=400, detail="Insufficient balance")
@@ -103,7 +107,7 @@ def buy_stock(
             symbol=symbol,
             order_type="BUY",
             quantity=quantity,
-            price=price,
+            price=price_inr,
             total_value=total_cost,
             realized_pnl=0.0
         )
@@ -128,8 +132,11 @@ def buy_stock(
             "message": "Buy order executed",
             "symbol": symbol,
             "quantity": quantity,
-            "buy_price": round(price, 2),
+            "buy_price": round(price_inr, 2),
             "total_cost": round(total_cost, 2),
+            "native_currency": native_currency,
+            "native_price": round(price, 4),
+            "fx_to_inr": round(fx_rate, 6),
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "remaining_balance": round(portfolio.balance, 2),
@@ -186,10 +193,14 @@ def sell_stock(
                 )
         else:
             sell_price = float(hist["Close"].iloc[-1])
-        total_value = sell_price * quantity
+        native_currency = detect_currency(symbol)
+        fx_rate = fx_to_inr_rate(native_currency)
+        sell_price_inr = sell_price * fx_rate
+        total_value = sell_price_inr * quantity
 
-        # Calculate P&L
-        pnl = (sell_price - trade.buy_price) * quantity
+        # Calculate P&L in base currency (INR) to stay consistent with portfolio balance.
+        # trade.buy_price is stored in native currency; we convert using current FX for simplicity.
+        pnl = (sell_price_inr - (trade.buy_price * fx_rate)) * quantity
         trade.realized_pnl += pnl
 
         # Update portfolio
@@ -202,7 +213,7 @@ def sell_stock(
             symbol=symbol,
             order_type="SELL",
             quantity=quantity,
-            price=sell_price,
+            price=sell_price_inr,
             total_value=total_value,
             realized_pnl=round(pnl, 2)
         )
@@ -218,10 +229,13 @@ def sell_stock(
             "message": "Sell order executed",
             "symbol": symbol,
             "quantity_sold": quantity,
-            "sell_price": round(sell_price, 2),
+            "sell_price": round(sell_price_inr, 2),
             "total_value": round(total_value, 2),
             "pnl": round(pnl, 2),
             "balance": round(portfolio.balance, 2),
+            "native_currency": native_currency,
+            "native_price": round(sell_price, 4),
+            "fx_to_inr": round(fx_rate, 6),
             "order_id": order.id
         }
     except HTTPException:

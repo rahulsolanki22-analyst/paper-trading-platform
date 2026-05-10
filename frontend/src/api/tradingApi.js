@@ -10,6 +10,11 @@ export const getHoldings = async () => {
   return res.data;
 };
 
+export const getTradeHistory = async (limit = 100) => {
+  const res = await axios.get(`/trade/history?limit=${limit}`);
+  return res.data;
+};
+
 export const buyStock = async (symbol, quantity) => {
   const res = await axios.post(
     `/trade/buy?symbol=${symbol}&quantity=${quantity}`

@@ -3,114 +3,140 @@ import { useNavigate } from "react-router-dom";
 import { getWatchlist, addToWatchlist, removeFromWatchlist } from "../../api/watchlistApi";
 import useAuthStore from "../../store/authStore";
 import useTradingStore from "../../store/tradingStore";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Watchlist = ({ currentSymbol }) => {
-    const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [adding, setAdding] = useState(false);
-    const { isAuthenticated } = useAuthStore();
-    const { setSymbol } = useTradingStore();
-    const navigate = useNavigate();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+  const { setSymbol } = useTradingStore();
+  const navigate = useNavigate();
 
-    const loadWatchlist = async () => {
-        if (!isAuthenticated) return;
-        try {
-            const data = await getWatchlist();
-            setItems(data.watchlist || []);
-        } catch (err) {
-            console.error("Failed to load watchlist:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const formatInr = (value) =>
+    typeof value === "number" ? value.toLocaleString("en-IN") : "—";
 
-    useEffect(() => {
-        loadWatchlist();
-    }, [isAuthenticated]);
+  const formatUsd = (value) =>
+    typeof value === "number"
+      ? value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : "—";
 
-    const handleAddCurrent = async () => {
-        if (!currentSymbol) return;
-        setAdding(true);
-        try {
-            await addToWatchlist(currentSymbol);
-            await loadWatchlist();
-        } catch (err) {
-            console.error("Failed to add to watchlist:", err);
-        } finally {
-            setAdding(false);
-        }
-    };
+  const loadWatchlist = async () => {
+    if (!isAuthenticated) return;
+    try {
+      const data = await getWatchlist();
+      setItems(data.watchlist || []);
+    } catch (err) {
+      console.error("Failed to load watchlist:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleRemove = async (symbol, e) => {
-        e.stopPropagation();
-        try {
-            await removeFromWatchlist(symbol);
-            setItems(items.filter((i) => i.symbol !== symbol));
-        } catch (err) {
-            console.error("Failed to remove from watchlist:", err);
-        }
-    };
+  useEffect(() => {
+    loadWatchlist();
+  }, [isAuthenticated]);
 
-    const handleSelect = (symbol) => {
-        setSymbol(symbol);
-        navigate(`/trade?symbol=${encodeURIComponent(symbol)}`);
-    };
+  const handleAddCurrent = async () => {
+    if (!currentSymbol) return;
+    setAdding(true);
+    try {
+      await addToWatchlist(currentSymbol);
+      await loadWatchlist();
+    } catch (err) {
+      console.error("Failed to add to watchlist:", err);
+    } finally {
+      setAdding(false);
+    }
+  };
 
-    const isInWatchlist = items.some((i) => i.symbol === currentSymbol);
+  const handleRemove = async (symbol, e) => {
+    e.stopPropagation();
+    try {
+      await removeFromWatchlist(symbol);
+      setItems(items.filter((i) => i.symbol !== symbol));
+    } catch (err) {
+      console.error("Failed to remove from watchlist:", err);
+    }
+  };
 
-    return (
-        <div className="bg-slate-900 p-4 rounded-lg border border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-slate-200 text-lg font-semibold">Watchlist</h3>
-                {currentSymbol && !isInWatchlist && (
-                    <button
-                        onClick={handleAddCurrent}
-                        disabled={adding}
-                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors disabled:opacity-50"
-                    >
-                        {adding ? "Adding..." : `+ ${currentSymbol}`}
-                    </button>
-                )}
-            </div>
+  const handleSelect = (sym) => {
+    setSymbol(sym);
+    navigate(`/trade?symbol=${encodeURIComponent(sym)}`);
+  };
 
-            {loading ? (
-                <div className="text-slate-400 text-sm py-4 text-center">Loading...</div>
-            ) : items.length === 0 ? (
-                <div className="text-slate-500 text-sm py-4 text-center">
-                    Your watchlist is empty.
-                    <br />
-                    Add stocks to track them here.
+  const isInWatchlist = items.some((i) => i.symbol === currentSymbol);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-base">Watchlist</CardTitle>
+        {currentSymbol && !isInWatchlist ? (
+          <Button type="button" size="sm" disabled={adding} onClick={handleAddCurrent}>
+            {adding ? "Adding…" : `+ ${currentSymbol}`}
+          </Button>
+        ) : null}
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="text-muted-foreground py-6 text-center text-sm">Loading…</div>
+        ) : items.length === 0 ? (
+          <div className="text-muted-foreground py-6 text-center text-sm">
+            Empty watchlist. Add the active symbol with the button above.
+          </div>
+        ) : (
+          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+            {items.map((item) => (
+              <div
+                key={item.symbol}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleSelect(item.symbol)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleSelect(item.symbol);
+                  }
+                }}
+                className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 transition-colors ${
+                  item.symbol === currentSymbol
+                    ? "border-primary/50 bg-primary/10"
+                    : "border-border bg-muted/40 hover:bg-muted/70"
+                }`}
+              >
+                <div>
+                  <div className="font-mono font-semibold">{item.symbol}</div>
+                  <div className="text-muted-foreground text-sm tabular-nums">
+                    {item?.native_currency && item.native_currency !== "INR" ? (
+                      <>
+                        ₹{formatInr(item.current_price_inr)}{" "}
+                        <span className="text-muted-foreground/80">
+                          (${formatUsd(item.native_price)})
+                        </span>
+                      </>
+                    ) : (
+                      <>₹{formatInr(item.current_price_inr ?? item.current_price)}</>
+                    )}
+                  </div>
                 </div>
-            ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {items.map((item) => (
-                        <div
-                            key={item.symbol}
-                            onClick={() => handleSelect(item.symbol)}
-                            className={`p-3 rounded cursor-pointer transition-colors flex items-center justify-between ${item.symbol === currentSymbol
-                                    ? "bg-blue-900/40 border border-blue-700"
-                                    : "bg-slate-800 hover:bg-slate-700"
-                                }`}
-                        >
-                            <div>
-                                <div className="text-slate-200 font-semibold">{item.symbol}</div>
-                                <div className="text-slate-400 text-sm">
-                                    ₹{item.current_price?.toLocaleString("en-IN")}
-                                </div>
-                            </div>
-                            <button
-                                onClick={(e) => handleRemove(item.symbol, e)}
-                                className="text-slate-500 hover:text-red-400 transition-colors p-1"
-                                title="Remove from watchlist"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={(e) => handleRemove(item.symbol, e)}
+                  title="Remove"
+                >
+                  ×
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 };
 
 export default Watchlist;

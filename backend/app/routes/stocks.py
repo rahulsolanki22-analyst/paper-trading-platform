@@ -1,5 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 import yfinance as yf
+import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -92,3 +96,48 @@ def get_stock_details(symbol: str):
         
     except Exception as e:
         return {"error": f"Failed to fetch details for {symbol}: {str(e)}"}
+
+
+# Dedicated search endpoint for Markets page (symbols + suggestions)
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://finance.yahoo.com/",
+}
+
+
+@router.get("/stocks/search")
+def stocks_search(q: str = Query(..., min_length=1)):
+    """
+    Search stock symbols dynamically (Yahoo Finance search).
+    Returns a list of suggestions: {symbol, name, exchange}.
+    """
+    query = q.strip()
+    if not query:
+        return []
+
+    urls = [
+        f"https://query2.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=10&newsCount=0",
+        f"https://query1.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=10&newsCount=0",
+    ]
+
+    for url in urls:
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            results = []
+            for item in data.get("quotes", []):
+                symbol = item.get("symbol")
+                name = item.get("shortname") or item.get("longname")
+                exchange = item.get("exchange")
+                if symbol and name:
+                    results.append({"symbol": symbol, "name": name, "exchange": exchange})
+            return results
+        except Exception as e:
+            logger.warning("stocks_search failed for %s: %s", url, str(e))
+            continue
+
+    return []

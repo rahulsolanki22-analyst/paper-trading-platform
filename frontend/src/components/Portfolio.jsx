@@ -5,6 +5,7 @@ import { autoLoginDemo } from "../utils/autoLogin";
 import useAuthStore from "../store/authStore";
 import useLanguageStore from "../store/languageStore";
 import useTradingStore from "../store/tradingStore";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Portfolio = ({ refresh }) => {
   const [data, setData] = useState(null);
@@ -105,17 +106,17 @@ const Portfolio = ({ refresh }) => {
 
   if (loading && !data) {
     return (
-      <div className="bg-slate-900 p-4 rounded border border-slate-700">
-        <div className="text-slate-400">{translate('loading')}</div>
-      </div>
+      <Card>
+        <CardContent className="text-muted-foreground py-6">{translate("loading")}</CardContent>
+      </Card>
     );
   }
 
   if (!data) {
     return (
-      <div className="bg-slate-900 p-4 rounded border border-slate-700">
-        <div className="text-red-400">{translate('error')}</div>
-      </div>
+      <Card>
+        <CardContent className="text-destructive py-6">{translate("error")}</CardContent>
+      </Card>
     );
   }
 
@@ -130,133 +131,127 @@ const Portfolio = ({ refresh }) => {
   );
 
   return (
-    <div className="bg-slate-900 p-4 rounded border border-slate-700">
-      <h3 className="text-slate-200 text-lg font-semibold mb-4">{translate('portfolio')}</h3>
+    <Card>
+      <CardHeader>
+        <CardTitle>{translate("portfolio")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-muted/50 rounded-lg border border-border p-3">
+            <div className="text-muted-foreground mb-1 text-xs">{translate("cashBalance")}</div>
+            <div className="font-semibold tabular-nums">
+              ₹{data.cash_balance.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+            </div>
+          </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-slate-800 p-3 rounded">
-          <div className="text-slate-400 text-xs mb-1">{translate('cashBalance')}</div>
-          <div className="text-slate-200 font-semibold">
-            ₹{data.cash_balance.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+          <div className="bg-muted/50 rounded-lg border border-border p-3">
+            <div className="text-muted-foreground mb-1 text-xs">{translate("totalValue")}</div>
+            <div className="font-semibold tabular-nums">
+              ₹{data.total_portfolio_value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+            </div>
           </div>
         </div>
 
-        <div className="bg-slate-800 p-3 rounded">
-          <div className="text-slate-400 text-xs mb-1">{translate('totalValue')}</div>
-          <div className="text-slate-200 font-semibold">
-            ₹{data.total_portfolio_value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+        {previousValue !== null ? (
+          <div className="bg-muted/50 rounded-lg border border-border p-3">
+            <div className="text-muted-foreground mb-1 text-xs">{translate("dailyPL")}</div>
+            <div
+              className={`text-lg font-semibold tabular-nums ${
+                dailyPnL >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {dailyPnL >= 0 ? "+" : ""}
+              ₹{dailyPnL.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+            </div>
           </div>
-        </div>
-      </div>
+        ) : null}
 
-      {/* Daily P&L */}
-      {previousValue !== null && (
-        <div className="mb-4 p-3 bg-slate-800 rounded">
-          <div className="text-slate-400 text-xs mb-1">{translate('dailyPL')}</div>
-          <div
-            className={`text-lg font-semibold ${
-              dailyPnL >= 0 ? "text-green-400" : "text-red-400"
-            }`}
-          >
-            {dailyPnL >= 0 ? "+" : ""}
-            ₹{dailyPnL.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+        {data.holdings.length === 0 ? (
+          <div className="text-muted-foreground py-8 text-center">
+            <p>{translate("noHoldings")}</p>
+            <p className="mt-2 text-sm">{translate("startTrading")}</p>
           </div>
-        </div>
-      )}
-
-      {/* Holdings Table */}
-      {data.holdings.length === 0 ? (
-        <div className="text-center py-8 text-slate-500">
-          <p>{translate('noHoldings')}</p>
-          <p className="text-sm mt-2">{translate('startTrading')}</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-700">
-                <th className="text-left py-2 text-slate-400 font-normal">{translate('symbol')}</th>
-                <th className="text-right py-2 text-slate-400 font-normal">{translate('qty')}</th>
-                <th className="text-right py-2 text-slate-400 font-normal">{translate('avgPrice')}</th>
-                <th className="text-right py-2 text-slate-400 font-normal">{translate('ltp')}</th>
-                <th className="text-right py-2 text-slate-400 font-normal">{translate('pl')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.holdings.map((h) => {
-                const pnlPercent =
-                  ((h.current_price - h.avg_buy_price) / h.avg_buy_price) * 100;
-                return (
-                  <tr
-                    key={h.symbol}
-                    onClick={() => {
-                      setSymbol(h.symbol);
-                      navigate(`/trade?symbol=${encodeURIComponent(h.symbol)}`);
-                    }}
-                    className="border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer"
-                  >
-                    <td className="py-3 text-slate-200 font-semibold">
-                      {h.symbol}
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-muted-foreground py-2 text-left font-normal">{translate("symbol")}</th>
+                  <th className="text-muted-foreground py-2 text-right font-normal">{translate("qty")}</th>
+                  <th className="text-muted-foreground py-2 text-right font-normal">{translate("avgPrice")}</th>
+                  <th className="text-muted-foreground py-2 text-right font-normal">{translate("ltp")}</th>
+                  <th className="text-muted-foreground py-2 text-right font-normal">{translate("pl")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.holdings.map((h) => {
+                  const pnlPercent =
+                    ((h.current_price - h.avg_buy_price) / h.avg_buy_price) * 100;
+                  return (
+                    <tr
+                      key={h.symbol}
+                      onClick={() => {
+                        setSymbol(h.symbol);
+                        navigate(`/trade?symbol=${encodeURIComponent(h.symbol)}`);
+                      }}
+                      className="border-border hover:bg-muted/50 cursor-pointer border-b transition-colors"
+                    >
+                      <td className="py-3 font-semibold">{h.symbol}</td>
+                      <td className="py-3 text-right tabular-nums">{h.quantity}</td>
+                      <td className="py-3 text-right tabular-nums">₹{h.avg_buy_price.toFixed(2)}</td>
+                      <td className="py-3 text-right tabular-nums">₹{h.current_price.toFixed(2)}</td>
+                      <td className="py-3 text-right">
+                        <div
+                          className={`font-semibold tabular-nums ${
+                            h.unrealized_pnl >= 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {h.unrealized_pnl >= 0 ? "+" : ""}
+                          ₹{h.unrealized_pnl.toFixed(2)}
+                        </div>
+                        <div
+                          className={`text-xs tabular-nums ${
+                            pnlPercent >= 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {pnlPercent >= 0 ? "+" : ""}
+                          {pnlPercent.toFixed(2)}%
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {data.holdings.length > 0 ? (
+                <tfoot>
+                  <tr className="border-t-2 border-border">
+                    <td colSpan={4} className="text-muted-foreground py-2 text-right">
+                      Total unrealized P&amp;L:
                     </td>
-                    <td className="py-3 text-right text-slate-300">
-                      {h.quantity}
-                    </td>
-                    <td className="py-3 text-right text-slate-300">
-                      ₹{h.avg_buy_price.toFixed(2)}
-                    </td>
-                    <td className="py-3 text-right text-slate-300">
-                      ₹{h.current_price.toFixed(2)}
-                    </td>
-                    <td className="py-3 text-right">
+                    <td className="py-2 text-right">
                       <div
-                        className={`font-semibold ${
-                          h.unrealized_pnl >= 0
-                            ? "text-green-400"
-                            : "text-red-400"
+                        className={`font-bold tabular-nums ${
+                          totalUnrealizedPnL >= 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
                         }`}
                       >
-                        {h.unrealized_pnl >= 0 ? "+" : ""}
-                        ₹{h.unrealized_pnl.toFixed(2)}
-                      </div>
-                      <div
-                        className={`text-xs ${
-                          pnlPercent >= 0 ? "text-green-400" : "text-red-400"
-                        }`}
-                      >
-                        {pnlPercent >= 0 ? "+" : ""}
-                        {pnlPercent.toFixed(2)}%
+                        {totalUnrealizedPnL >= 0 ? "+" : ""}
+                        ₹{totalUnrealizedPnL.toFixed(2)}
                       </div>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-            {data.holdings.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-slate-700">
-                  <td colSpan="4" className="py-2 text-slate-400 text-right">
-                    Total Unrealized P&L:
-                  </td>
-                  <td className="py-2 text-right">
-                    <div
-                      className={`font-bold ${
-                        totalUnrealizedPnL >= 0
-                          ? "text-green-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      {totalUnrealizedPnL >= 0 ? "+" : ""}
-                      ₹{totalUnrealizedPnL.toFixed(2)}
-                    </div>
-                  </td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-      )}
-    </div>
+                </tfoot>
+              ) : null}
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

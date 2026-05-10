@@ -11,10 +11,15 @@ try:
     logreg = joblib.load("app/ml/models/logistic.pkl")
     rf = joblib.load("app/ml/models/random_forest.pkl")
     xgb = joblib.load("app/ml/models/xgboost.pkl")
+    # Optional calibrated model (reduces extreme 0/1 confidence)
+    try:
+        xgb_calibrated = joblib.load("app/ml/models/xgboost_calibrated.pkl")
+    except Exception:
+        xgb_calibrated = None
     le = joblib.load("app/ml/models/label_encoder.pkl")
 except Exception as e:
     logger.error(f"Error loading ML models: {str(e)}")
-    logreg = rf = xgb = le = None
+    logreg = rf = xgb = xgb_calibrated = le = None
 
 def build_latest_features(symbol="AAPL", period="3mo"):
     # Use robust market data service
@@ -58,9 +63,13 @@ def predict_signal(symbol="AAPL"):
     """
     X, price = build_latest_features(symbol)
 
-    # Get prediction probabilities
-    pred = xgb.predict(X)[0]
-    proba = xgb.predict_proba(X)[0]
+    model = xgb_calibrated or xgb
+    if model is None or le is None:
+        raise ValueError("ML models are not loaded. Train models first.")
+
+    # Get prediction probabilities (prefer calibrated probabilities if available)
+    pred = model.predict(X)[0]
+    proba = model.predict_proba(X)[0]
     
     # Get class names from label encoder
     classes = le.classes_

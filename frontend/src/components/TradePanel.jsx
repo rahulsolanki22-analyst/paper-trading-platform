@@ -6,6 +6,10 @@ import { autoLoginDemo } from "../utils/autoLogin";
 import useTradingStore from "../store/tradingStore";
 import useAuthStore from "../store/authStore";
 import useLanguageStore from "../store/languageStore";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const TradePanel = ({ symbol, onTrade }) => {
   const { tradingMode } = useTradingStore();
@@ -22,12 +26,11 @@ const TradePanel = ({ symbol, onTrade }) => {
 
   useEffect(() => {
     const loadHoldings = async () => {
-      // Auto-login if not authenticated
       if (!isAuthenticated) {
         try {
           await autoLoginDemo();
-        } catch (error) {
-          console.error('Auto-login failed:', error);
+        } catch (e) {
+          console.error("Auto-login failed:", e);
           return;
         }
       }
@@ -43,7 +46,6 @@ const TradePanel = ({ symbol, onTrade }) => {
     loadHoldings();
   }, [onTrade, isAuthenticated]);
 
-  // Clear messages after 3 seconds
   useEffect(() => {
     if (error || success) {
       const timer = setTimeout(() => {
@@ -79,7 +81,6 @@ const TradePanel = ({ symbol, onTrade }) => {
     setSuccess(null);
 
     try {
-      // Build query params
       let url = `/trade/buy?symbol=${symbol}&quantity=${quantity}`;
       if (stopLoss && parseFloat(stopLoss) > 0) {
         url += `&stop_loss=${stopLoss}`;
@@ -95,9 +96,7 @@ const TradePanel = ({ symbol, onTrade }) => {
       setTakeProfit("");
       onTrade();
     } catch (err) {
-      setError(
-        err.response?.data?.detail || "Failed to execute buy order"
-      );
+      setError(err.response?.data?.detail || "Failed to execute buy order");
     } finally {
       setLoading(false);
     }
@@ -137,159 +136,145 @@ const TradePanel = ({ symbol, onTrade }) => {
       setQuantity("");
       onTrade();
     } catch (err) {
-      setError(
-        err.response?.data?.detail || "Failed to execute sell order"
-      );
+      setError(err.response?.data?.detail || "Failed to execute sell order");
     } finally {
       setLoading(false);
     }
   };
 
   const ownsStock = holdings.some((h) => h.symbol === symbol);
-  const holding = ownsStock
-    ? holdings.find((h) => h.symbol === symbol)
-    : null;
+  const holding = ownsStock ? holdings.find((h) => h.symbol === symbol) : null;
   const isDisabled = tradingMode !== "PAPER" || loading;
-  const quantityValid = quantity && Number(quantity) > 0 && Number.isInteger(Number(quantity));
+  const quantityValid =
+    quantity && Number(quantity) > 0 && Number.isInteger(Number(quantity));
 
   return (
-    <div className={`bg-slate-900 p-4 rounded border border-slate-700`}>
-      <h3 className={`text-slate-200 text-lg font-semibold mb-4`}>{translate('trade')}</h3>
-
-      {/* Current holding info */}
-      {holding && (
-        <div className={`mb-4 p-3 bg-slate-800 rounded`}>
-          <div className={`text-slate-400 text-sm`}>Your Position</div>
-          <div className={`text-slate-200 font-semibold`}>
-            {holding.quantity} shares @ ₹{holding.avg_buy_price}
+    <Card>
+      <CardHeader>
+        <CardTitle>{translate("trade")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {holding ? (
+          <div className="bg-muted/50 rounded-lg border border-border p-3">
+            <div className="text-muted-foreground text-sm">Your position</div>
+            <div className="font-semibold">
+              {holding.quantity} shares @ ₹{holding.avg_buy_price}
+            </div>
           </div>
-        </div>
-      )}
+        ) : null}
 
-      {/* Quantity Input */}
-      <div className="mb-4">
-        <label className={`block text-slate-300 text-sm mb-2`}>{translate('quantity')}</label>
-        <input
-          type="number"
-          min="1"
-          step="1"
-          placeholder="Enter quantity"
-          value={quantity}
-          onChange={(e) => {
-            const val = e.target.value;
-            setQuantity(val === "" ? "" : val);
-            setError(null);
+        <div className="space-y-2">
+          <Label htmlFor="trade-qty">{translate("quantity")}</Label>
+          <Input
+            id="trade-qty"
+            type="number"
+            min={1}
+            step={1}
+            placeholder="Quantity"
+            value={quantity}
+            onChange={(e) => {
+              setQuantity(e.target.value === "" ? "" : e.target.value);
+              setError(null);
+            }}
+            disabled={isDisabled}
+            aria-invalid={quantity && !quantityValid}
+            className={quantity && !quantityValid ? "border-destructive" : ""}
+          />
+          {quantity && !quantityValid ? (
+            <p className="text-destructive text-xs">Must be a positive integer</p>
+          ) : null}
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-primary px-0"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+        >
+          {showAdvanced ? "▼" : "▶"} Advanced order options
+        </Button>
+
+        {showAdvanced ? (
+          <div className="bg-muted/40 space-y-3 rounded-lg border border-border p-3">
+            <div className="space-y-2">
+              <Label htmlFor="sl">Stop-loss (optional)</Label>
+              <Input
+                id="sl"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Trigger sell below…"
+                value={stopLoss}
+                onChange={(e) => setStopLoss(e.target.value)}
+                disabled={isDisabled}
+              />
+              <p className="text-muted-foreground text-xs">Auto-sell when price falls to this level.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tp">Take-profit (optional)</Label>
+              <Input
+                id="tp"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Trigger sell above…"
+                value={takeProfit}
+                onChange={(e) => setTakeProfit(e.target.value)}
+                disabled={isDisabled}
+              />
+              <p className="text-muted-foreground text-xs">Auto-sell when price reaches this target.</p>
+            </div>
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
+            {error}
+          </div>
+        ) : null}
+        {success ? (
+          <div className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 rounded-md border px-3 py-2 text-sm">
+            {success}
+          </div>
+        ) : null}
+
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            className="flex-1 bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50"
+            disabled={isDisabled || !quantityValid}
+            onClick={handleBuy}
+          >
+            {loading ? translate("processing") : translate("buy")}
+          </Button>
+          <Button
+            type="button"
+            className="flex-1 bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
+            disabled={isDisabled || !quantityValid || !ownsStock}
+            onClick={handleSell}
+          >
+            {loading ? translate("processing") : translate("sell")}
+          </Button>
+        </div>
+
+        <Button
+          type="button"
+          variant="destructive"
+          className="w-full"
+          onClick={() => {
+            if (window.confirm("Reset portfolio to ₹100,000? This cannot be undone.")) {
+              resetPortfolio(100000).then(() => {
+                setSuccess("Portfolio reset to ₹100,000");
+                onTrade();
+              });
+            }
           }}
-          disabled={isDisabled}
-          className={`w-full p-3 bg-slate-800 text-slate-200 rounded border ${quantity && !quantityValid ? "border-red-500" : "border-slate-700"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-        />
-        {quantity && !quantityValid && (
-          <p className={`text-red-400 text-xs mt-1`}>
-            Must be a positive integer
-          </p>
-        )}
-      </div>
-
-      {/* Advanced Order Options Toggle */}
-      <button
-        type="button"
-        onClick={() => setShowAdvanced(!showAdvanced)}
-        className="mb-4 text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
-      >
-        {showAdvanced ? "▼" : "▶"} Advanced Order Options
-      </button>
-
-      {/* Stop-Loss and Take-Profit Inputs */}
-      {showAdvanced && (
-        <div className="mb-4 p-3 bg-slate-800/50 rounded border border-slate-700 space-y-3">
-          <div>
-            <label className="block text-slate-400 text-xs mb-1">
-              Stop-Loss Price (optional)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Auto-sell if price drops to..."
-              value={stopLoss}
-              onChange={(e) => setStopLoss(e.target.value)}
-              disabled={isDisabled}
-              className="w-full p-2 bg-slate-700 text-slate-200 rounded border border-slate-600 text-sm disabled:opacity-50"
-            />
-            <p className="text-slate-500 text-xs mt-1">Automatically sells when price falls below this level</p>
-          </div>
-          <div>
-            <label className="block text-slate-400 text-xs mb-1">
-              Take-Profit Price (optional)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Auto-sell if price rises to..."
-              value={takeProfit}
-              onChange={(e) => setTakeProfit(e.target.value)}
-              disabled={isDisabled}
-              className="w-full p-2 bg-slate-700 text-slate-200 rounded border border-slate-600 text-sm disabled:opacity-50"
-            />
-            <p className="text-slate-500 text-xs mt-1">Automatically sells when price reaches this target</p>
-          </div>
-        </div>
-      )}
-
-      {/* Error/Success Messages */}
-      {error && (
-        <div className={`mb-3 p-2 bg-red-900/30 border border-red-700 rounded text-red-200 text-sm`}>
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className={`mb-3 p-2 bg-green-900/30 border border-green-700 rounded text-green-200 text-sm`}>
-          {success}
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-2 mb-3">
-        <button
-          onClick={handleBuy}
-          disabled={isDisabled || !quantityValid}
-          className={`flex-1 py-3 rounded font-semibold transition-colors ${isDisabled || !quantityValid
-            ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-            : "bg-green-600 hover:bg-green-700 text-white"
-            }`}
         >
-          {loading ? translate('processing') : translate('buy')}
-        </button>
-
-        <button
-          onClick={handleSell}
-          disabled={isDisabled || !quantityValid || !ownsStock}
-          className={`flex-1 py-3 rounded font-semibold transition-colors ${isDisabled || !quantityValid || !ownsStock
-            ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-            : "bg-red-600 hover:bg-red-700 text-white"
-            }`}
-        >
-          {loading ? translate('processing') : translate('sell')}
-        </button>
-      </div>
-
-      {/* Reset Button */}
-      <button
-        onClick={() => {
-          if (window.confirm("Reset portfolio to ₹100,000? This cannot be undone.")) {
-            resetPortfolio(100000).then(() => {
-              setSuccess("Portfolio reset to ₹100,000");
-              onTrade();
-            });
-          }
-        }}
-        className={`w-full py-2 bg-red-700 hover:bg-red-800 text-white rounded text-sm transition-colors`}
-      >
-        {translate('resetPaperMoney')}
-      </button>
-    </div>
+          {translate("resetPaperMoney")}
+        </Button>
+      </CardContent>
+    </Card>
   );
 };
 

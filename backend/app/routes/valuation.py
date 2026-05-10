@@ -4,6 +4,7 @@ from app.models.user import User
 from app.models.portfolio import Portfolio
 from app.models.trade import Trade
 from app.services.pricing import get_live_price
+from app.services.fx import detect_currency, fx_to_inr_rate
 from app.utils.auth import get_db, get_current_user
 import time
 from typing import Optional
@@ -15,71 +16,8 @@ except Exception:
 
 router = APIRouter()
 
-# Simple in-process cache for FX rates to INR
-_fx_cache = {}
-_fx_ttl_seconds = 600  # 10 minutes
 _prev_close_cache = {}
 _prev_close_ttl = 600  # 10 minutes
-
-def _detect_currency(symbol: str) -> str:
-    """Best-effort detection of a symbol's native currency."""
-    # Common shortcuts
-    if symbol.endswith('.NS') or symbol.endswith('.BSE') or symbol.endswith('.BO'):
-        return 'INR'
-    if yf is None:
-        # Fallback default
-        return 'USD'
-    try:
-        info = yf.Ticker(symbol).fast_info
-        curr = getattr(info, 'currency', None) or info.get('currency') if isinstance(info, dict) else None
-        if curr:
-            return curr
-    except Exception:
-        pass
-    # Legacy .info fallback
-    try:
-        info = yf.Ticker(symbol).info
-        curr = info.get('currency')
-        if curr:
-            return curr
-    except Exception:
-        pass
-    return 'USD'
-
-def _fx_to_inr_rate(currency: str) -> float:
-    """Get FX rate to INR for a currency. Returns 1.0 for INR.
-    Uses yahoo finance pairs like 'USDINR=X'.
-    """
-    if currency == 'INR':
-        return 1.0
-    key = f"{currency}->INR"
-    now = time.time()
-    cached = _fx_cache.get(key)
-    if cached and (now - cached[1] < _fx_ttl_seconds):
-        return cached[0]
-    if yf is None:
-        # Safe fallback if yfinance unavailable
-        return 1.0
-    pair = f"{currency}INR=X"
-    rate: Optional[float] = None
-    try:
-        # Try fast_info first
-        finfo = yf.Ticker(pair).fast_info
-        rate = getattr(finfo, 'last_price', None) or finfo.get('last_price') if isinstance(finfo, dict) else None
-    except Exception:
-        rate = None
-    if rate is None:
-        try:
-            hist = yf.Ticker(pair).history(period="1d")
-            if not hist.empty:
-                rate = float(hist['Close'].iloc[-1])
-        except Exception:
-            rate = None
-    if not rate or rate <= 0:
-        # Fallback to 1 to avoid breaking response
-        rate = 1.0
-    _fx_cache[key] = (rate, now)
-    return rate
 
 def _get_prev_close_native(symbol: str) -> Optional[float]:
     """Get previous close in native currency with caching."""
@@ -153,11 +91,11 @@ def portfolio_valuation(
 
     for symbol, h in holdings.items():
         # native price and currency
-        native_currency = _detect_currency(symbol)
+        native_currency = detect_currency(symbol)
         native_price = get_live_price(symbol)
 
         # conversion to INR
-        fx_rate = _fx_to_inr_rate(native_currency)
+        fx_rate = fx_to_inr_rate(native_currency)
         base_price = native_price * fx_rate
         base_avg_buy = h["avg_buy_price"] * fx_rate
 

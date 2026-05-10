@@ -3,6 +3,7 @@ import { createChart, ColorType } from "lightweight-charts";
 import { fetchCandles, fetchIndicators } from "../../api/marketApi";
 import useTradingStore from "../../store/tradingStore";
 import CompanyDetails from "../CompanyDetails";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 const TIMEFRAMES = [
   { label: "1m", value: "1m" },
@@ -336,80 +337,68 @@ const TradingChart = ({ symbol = "AAPL" }) => {
   const fmt = (v) => (typeof v === "number" && Number.isFinite(v) ? v.toFixed(2) : "—");
 
   return (
-    <div className="bg-slate-900 rounded-lg border border-slate-700 p-4">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-slate-200 font-semibold text-lg">{symbol}</span>
-          {loading && (
-            <span className="text-slate-400 text-sm">Loading...</span>
-          )}
-          {error && (
-            <span className="text-red-400 text-sm">⚠️ Data unavailable</span>
-          )}
-        </div>
-
-        {/* Timeframe selector */}
-        <div className="flex gap-1 bg-slate-800 rounded p-1">
-          {TIMEFRAMES.map((tf) => (
-            <button
-              key={tf.value}
-              onClick={() => setTimeframe(tf.value)}
-              className={`px-3 py-1 text-xs rounded transition-colors ${
-                timeframe === tf.value
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-700"
-              }`}
-            >
-              {tf.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Minimal OHLC strip (fixed height so chart never “jumps”) */}
-      <div className="h-6 mb-2 flex items-center gap-4 text-xs text-slate-400 tabular-nums">
-        <span>
-          <span className="text-slate-500">O:</span> {fmt(ohlc?.open)}
-        </span>
-        <span>
-          <span className="text-slate-500">H:</span> {fmt(ohlc?.high)}
-        </span>
-        <span>
-          <span className="text-slate-500">L:</span> {fmt(ohlc?.low)}
-        </span>
-        <span>
-          <span className="text-slate-500">C:</span> {fmt(ohlc?.close)}
-        </span>
-        {hoverOhlc && (
-          <span className="text-slate-500">(hover)</span>
-        )}
-      </div>
-
-      {/* Error message */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-900/20 border border-red-700 rounded-lg">
-          <p className="text-red-300 text-sm">{error}</p>
-          <p className="text-red-400/70 text-xs mt-2">
-            Tip: Try refreshing the page or selecting a different symbol. Yahoo Finance may be experiencing temporary issues.
-          </p>
-        </div>
-      )}
-
-      {/* Chart container */}
-      {!error && <div ref={chartRef} style={{ height: "600px", width: "100%" }} />}
-      {error && (
-        <div className="flex items-center justify-center" style={{ height: "600px", width: "100%" }}>
-          <div className="text-center">
-            <div className="text-6xl mb-4">📊</div>
-            <p className="text-slate-400">Chart data unavailable</p>
+    <Card className="gap-0 py-0">
+      <CardHeader className="border-b border-border pb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-lg font-semibold">{symbol}</span>
+            {loading ? <span className="text-muted-foreground text-sm">Loading…</span> : null}
+            {error ? <span className="text-destructive text-sm">Data unavailable</span> : null}
+          </div>
+          <div className="bg-muted flex w-fit gap-1 rounded-lg p-1">
+            {TIMEFRAMES.map((tf) => (
+              <button
+                key={tf.value}
+                type="button"
+                onClick={() => setTimeframe(tf.value)}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                  timeframe === tf.value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-background/80"
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
           </div>
         </div>
-      )}
+      </CardHeader>
+      <CardContent className="px-4 pb-4 pt-4">
+        <div className="text-muted-foreground mb-2 flex h-6 items-center gap-4 text-xs tabular-nums">
+          <span>
+            <span className="text-muted-foreground/80">O</span> {fmt(ohlc?.open)}
+          </span>
+          <span>
+            <span className="text-muted-foreground/80">H</span> {fmt(ohlc?.high)}
+          </span>
+          <span>
+            <span className="text-muted-foreground/80">L</span> {fmt(ohlc?.low)}
+          </span>
+          <span>
+            <span className="text-muted-foreground/80">C</span> {fmt(ohlc?.close)}
+          </span>
+          {hoverOhlc ? <span className="text-muted-foreground/70">(hover)</span> : null}
+        </div>
 
-      {/* Company Details Section */}
-      <CompanyDetails symbol={symbol} />
-    </div>
+        {error ? (
+          <div className="border-destructive/40 bg-destructive/10 mb-4 rounded-lg border p-4">
+            <p className="text-destructive text-sm">{error}</p>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Try another symbol or refresh. The data provider may be temporarily unavailable.
+            </p>
+          </div>
+        ) : null}
+
+        {!error ? <div ref={chartRef} style={{ height: "600px", width: "100%" }} /> : null}
+        {error ? (
+          <div className="flex items-center justify-center" style={{ height: "600px", width: "100%" }}>
+            <div className="text-muted-foreground text-center text-sm">Chart data unavailable</div>
+          </div>
+        ) : null}
+
+        <CompanyDetails symbol={symbol} />
+      </CardContent>
+    </Card>
   );
 };
 

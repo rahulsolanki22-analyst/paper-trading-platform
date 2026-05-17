@@ -28,8 +28,10 @@ const nav = [
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/profile", label: "Profile", icon: UserRound },
   { to: "/stocks", label: "Markets", icon: Table2 },
+  { to: "/markets-hub", label: "Markets Hub", icon: Table2 },
   { to: "/", label: "Home", icon: House },
 ];
+
 
 function navActive(pathname, to) {
   if (to === "/") return pathname === "/";

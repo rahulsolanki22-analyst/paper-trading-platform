@@ -10,8 +10,10 @@ from app.routes import (
     market, portfolio, trading, indicators, signals,
     backtest, dataset, ml_signal, search, news,
     valuation, reset, stocks, auth, markets,
-    analytics, watchlist, alerts, ai_features
+    analytics, watchlist, alerts, ai_features, markets_hub
 )
+
+
 # Import models to ensure tables are created (import without name conflict)
 from app.models import (
     user as user_model,
@@ -101,6 +103,10 @@ app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 app.include_router(watchlist.router, prefix="/watchlist", tags=["watchlist"])
 app.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
 app.include_router(ai_features.router, prefix="/ai", tags=["ai"])
+
+# Markets Hub (HTTP routes + WebSocket)
+app.include_router(markets_hub.router, prefix="/api/markets", tags=["markets-hub"])
+
 @app.get("/")
 def root():
     return {"status": "Backend running"}

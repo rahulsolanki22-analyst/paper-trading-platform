@@ -10,6 +10,7 @@ import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
+import MarketsHub from "./pages/MarketsHub";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+
         <Route
           path="/trade"
           element={
@@ -56,9 +58,19 @@ function App() {
             </AppLayout>
           }
         />
+
+        <Route
+          path="/markets-hub"
+          element={
+            <AppLayout>
+              <MarketsHub />
+            </AppLayout>
+          }
+        />
       </Routes>
     </Router>
   );
 }
+
 
 export default App;

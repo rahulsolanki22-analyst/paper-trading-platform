@@ -26,22 +26,22 @@ const MLSignalPanel = ({ symbol }) => {
 
   if (loading) {
     return (
-      <div className="bg-slate-900 p-4 rounded border border-slate-700">
-        <h3 className="text-slate-200 text-sm font-semibold mb-3">
+      <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
+        <h3 className="text-card-foreground text-sm font-semibold mb-3">
           ML Signal
         </h3>
-        <div className="text-slate-400 text-sm">Loading...</div>
+        <div className="text-muted-foreground text-sm">Loading...</div>
       </div>
     );
   }
 
   if (error || !signal) {
     return (
-      <div className="bg-slate-900 p-4 rounded border border-slate-700">
-        <h3 className="text-slate-200 text-sm font-semibold mb-3">
+      <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
+        <h3 className="text-card-foreground text-sm font-semibold mb-3">
           ML Signal
         </h3>
-        <div className="text-red-400 text-sm">{error || "No signal available"}</div>
+        <div className="text-destructive text-sm font-semibold">{error || "No signal available"}</div>
       </div>
     );
   }
@@ -52,37 +52,37 @@ const MLSignalPanel = ({ symbol }) => {
   const getSignalColor = (signalType) => {
     switch (signalType) {
       case "BUY":
-        return "text-green-400";
+        return "text-emerald-600 dark:text-emerald-400";
       case "SELL":
-        return "text-red-400";
+        return "text-red-600 dark:text-red-400";
       case "HOLD":
-        return "text-yellow-400";
+        return "text-amber-600 dark:text-amber-400";
       default:
-        return "text-slate-400";
+        return "text-muted-foreground";
     }
   };
 
   const getBarColor = (signalType) => {
     switch (signalType) {
       case "BUY":
-        return "bg-green-500";
+        return "bg-emerald-500 dark:bg-emerald-400";
       case "SELL":
-        return "bg-red-500";
+        return "bg-red-500 dark:bg-red-400";
       case "HOLD":
-        return "bg-yellow-500";
+        return "bg-amber-500 dark:bg-amber-400";
       default:
-        return "bg-slate-500";
+        return "bg-muted";
     }
   };
 
   return (
-    <div className="bg-slate-900 p-4 rounded border border-slate-700">
+    <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-slate-200 text-sm font-semibold">ML Signal</h3>
+        <h3 className="text-card-foreground text-sm font-semibold">ML Signal</h3>
         <span
-          className={`text-xs font-bold px-2 py-1 rounded ${getSignalColor(
+          className={`text-xs font-bold px-2 py-1 rounded bg-muted ${getSignalColor(
             dominant_signal
-          )} bg-slate-800`}
+          )}`}
         >
           {dominant_signal}
         </span>
@@ -91,12 +91,12 @@ const MLSignalPanel = ({ symbol }) => {
       {/* BUY Confidence */}
       <div className="mb-3">
         <div className="flex justify-between text-xs mb-1">
-          <span className="text-green-400">BUY</span>
-          <span className="text-slate-300">{buy_confidence.toFixed(1)}%</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">BUY</span>
+          <span className="text-card-foreground font-medium">{buy_confidence.toFixed(1)}%</span>
         </div>
-        <div className="w-full bg-slate-800 rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-2">
           <div
-            className={`bg-green-500 h-2 rounded-full transition-all`}
+            className="bg-emerald-500 dark:bg-emerald-400 h-2 rounded-full transition-all"
             style={{ width: `${buy_confidence}%` }}
           />
         </div>
@@ -105,12 +105,12 @@ const MLSignalPanel = ({ symbol }) => {
       {/* HOLD Confidence */}
       <div className="mb-3">
         <div className="flex justify-between text-xs mb-1">
-          <span className="text-yellow-400">HOLD</span>
-          <span className="text-slate-300">{hold_confidence.toFixed(1)}%</span>
+          <span className="text-amber-600 dark:text-amber-400 font-semibold">HOLD</span>
+          <span className="text-card-foreground font-medium">{hold_confidence.toFixed(1)}%</span>
         </div>
-        <div className="w-full bg-slate-800 rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-2">
           <div
-            className={`bg-yellow-500 h-2 rounded-full transition-all`}
+            className="bg-amber-500 dark:bg-amber-400 h-2 rounded-full transition-all"
             style={{ width: `${hold_confidence}%` }}
           />
         </div>
@@ -119,20 +119,20 @@ const MLSignalPanel = ({ symbol }) => {
       {/* SELL Confidence */}
       <div className="mb-3">
         <div className="flex justify-between text-xs mb-1">
-          <span className="text-red-400">SELL</span>
-          <span className="text-slate-300">{sell_confidence.toFixed(1)}%</span>
+          <span className="text-red-600 dark:text-red-400 font-semibold">SELL</span>
+          <span className="text-card-foreground font-medium">{sell_confidence.toFixed(1)}%</span>
         </div>
-        <div className="w-full bg-slate-800 rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-2">
           <div
-            className={`bg-red-500 h-2 rounded-full transition-all`}
+            className="bg-red-500 dark:bg-red-400 h-2 rounded-full transition-all"
             style={{ width: `${sell_confidence}%` }}
           />
         </div>
       </div>
 
       {/* Disclaimer */}
-      <div className="mt-4 pt-3 border-t border-slate-700">
-        <p className="text-xs text-slate-500 italic">
+      <div className="mt-4 pt-3 border-t border-border">
+        <p className="text-xs text-muted-foreground italic">
           ML signals are for educational purposes only. Not financial advice.
         </p>
       </div>

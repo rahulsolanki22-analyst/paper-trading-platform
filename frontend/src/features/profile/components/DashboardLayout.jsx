@@ -39,7 +39,7 @@ function ActivityTab() {
 }
 
 // Right panel component
-function RightPanel({ recentTrades, watchlist }) {
+function RightPanel({ recentTrades, watchlist, stats, dailyPnlPercent }) {
   return (
     <div className="hidden xl:block w-80 space-y-4">
       {/* Recent Trades */}
@@ -53,7 +53,7 @@ function RightPanel({ recentTrades, watchlist }) {
             {recentTrades.slice(0, 5).map((trade) => (
               <div key={trade.id} className="p-2 rounded-lg border border-white/5 bg-white/5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-medium">{trade.symbol}</span>
+                  <span className="text-xs font-mono font-medium text-zinc-200">{trade.symbol}</span>
                   <span className={cn(
                     "text-[10px] px-2 py-0.5 rounded font-semibold uppercase",
                     trade.side === "BUY" 
@@ -97,8 +97,8 @@ function RightPanel({ recentTrades, watchlist }) {
             {watchlist.slice(0, 4).map((item) => (
               <div key={item.symbol} className="p-2 rounded-lg border border-white/5 bg-white/5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-medium">{item.symbol}</span>
-                  <span className="text-xs text-muted-foreground">₹{item.price?.toFixed(2) || "0.00"}</span>
+                  <span className="text-xs font-mono font-medium text-zinc-200">{item.symbol}</span>
+                  <span className="text-xs text-zinc-200">₹{item.price?.toFixed(2) || "0.00"}</span>
                 </div>
               </div>
             ))}
@@ -118,15 +118,17 @@ function RightPanel({ recentTrades, watchlist }) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Today's Change</span>
-            <span className="text-xs font-mono text-emerald-400">+2.4%</span>
+            <span className={cn("text-xs font-mono", dailyPnlPercent >= 0 ? "text-emerald-400" : "text-red-400")}>
+              {dailyPnlPercent >= 0 ? "+" : ""}{dailyPnlPercent?.toFixed(2) || "0.00"}%
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Win Rate</span>
-            <span className="text-xs font-mono">68.5%</span>
+            <span className="text-xs font-mono">{stats?.winRate?.toFixed(1) || 0}%</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Active Positions</span>
-            <span className="text-xs font-mono">3</span>
+            <span className="text-xs font-mono">{stats?.activePositions || 0}</span>
           </div>
         </div>
       </div>
@@ -211,7 +213,12 @@ export function DashboardLayout({
         
         {/* Right Panel - Hidden on mobile */}
         <div className="hidden xl:block w-80 space-y-4 overflow-y-auto">
-          <RightPanel recentTrades={recentTrades} watchlist={watchlist} />
+          <RightPanel 
+            recentTrades={recentTrades} 
+            watchlist={watchlist} 
+            stats={stats}
+            dailyPnlPercent={dailyPnlPercent}
+          />
         </div>
       </div>
     </div>

@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { createChart, ColorType } from "lightweight-charts";
 import { fetchCandles, fetchIndicators } from "../../api/marketApi";
 import useTradingStore from "../../store/tradingStore";
+import useThemeStore from "../../store/themeStore";
 import CompanyDetails from "../CompanyDetails";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Camera } from "lucide-react";
 
 const TIMEFRAMES = [
   { label: "1m", value: "1m" },
@@ -19,37 +21,88 @@ const TradingChart = ({ symbol = "AAPL" }) => {
   const chartInstanceRef = useRef(null);
   const seriesRefs = useRef({});
   const { timeframe, setTimeframe, indicators } = useTradingStore();
+  const { currentTheme } = useThemeStore();
   // Minimal OHLC display (updates on hover, falls back to latest candle)
   const [hoverOhlc, setHoverOhlc] = useState(null);
   const [lastOhlc, setLastOhlc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [takingScreenshot, setTakingScreenshot] = useState(false);
+
+  const handleScreenshot = () => {
+    if (!chartInstanceRef.current) return;
+    try {
+      setTakingScreenshot(true);
+      
+      // Lightweight charts has a built-in method for this
+      const canvas = chartInstanceRef.current.takeScreenshot();
+      const image = canvas.toDataURL("image/png");
+      
+      const link = document.createElement("a");
+      link.href = image;
+      link.download = `${symbol}-chart-${new Date().getTime()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Screenshot failed:", err);
+    } finally {
+      setTakingScreenshot(false);
+    }
+  };
+
+  // Update chart options when theme changes
+  useEffect(() => {
+    if (!chartInstanceRef.current) return;
+    const activeTheme = useThemeStore.getState().getTheme();
+    const colors = activeTheme.colors;
+
+    chartInstanceRef.current.applyOptions({
+      layout: {
+        background: { type: ColorType.Solid, color: colors.chartBg },
+        textColor: colors.chartText,
+      },
+      grid: {
+        vertLines: { color: colors.chartGrid },
+        horzLines: { color: colors.chartGrid },
+      },
+      rightPriceScale: {
+        borderColor: colors.chartBorder,
+      },
+      timeScale: {
+        borderColor: colors.chartBorder,
+      },
+    });
+  }, [currentTheme]);
 
   // Initialize chart
   useEffect(() => {
     if (!chartRef.current) return;
 
+    const activeTheme = useThemeStore.getState().getTheme();
+    const colors = activeTheme.colors;
+
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
       height: 600,
       layout: {
-        background: { type: ColorType.Solid, color: "#020617" },
-        textColor: "#e5e7eb",
+        background: { type: ColorType.Solid, color: colors.chartBg },
+        textColor: colors.chartText,
         fontSize: 12,
       },
       grid: {
-        vertLines: { color: "#1e293b", style: 1 },
-        horzLines: { color: "#1e293b", style: 1 },
+        vertLines: { color: colors.chartGrid, style: 1 },
+        horzLines: { color: colors.chartGrid, style: 1 },
       },
       rightPriceScale: {
-        borderColor: "#334155",
+        borderColor: colors.chartBorder,
         scaleMargins: {
           top: 0.1,
           bottom: 0.1,
         },
       },
       timeScale: {
-        borderColor: "#334155",
+        borderColor: colors.chartBorder,
         timeVisible: true,
         secondsVisible: false,
       },
@@ -361,6 +414,15 @@ const TradingChart = ({ symbol = "AAPL" }) => {
               </button>
             ))}
           </div>
+          <button
+            onClick={handleScreenshot}
+            disabled={takingScreenshot || !!error}
+            className="flex items-center justify-center gap-2 rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+            title="Take Screenshot"
+          >
+            <Camera className="h-4 w-4" />
+            <span className="hidden sm:inline">{takingScreenshot ? "Capturing..." : "Screenshot"}</span>
+          </button>
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-4">

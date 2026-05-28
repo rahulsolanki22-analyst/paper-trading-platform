@@ -46,7 +46,7 @@ const Login = () => {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>Use your PaperTrade credentials.</CardDescription>
+          <CardDescription>Use your StellerTrade credentials.</CardDescription>
         </CardHeader>
         <CardContent>
           {error ? (

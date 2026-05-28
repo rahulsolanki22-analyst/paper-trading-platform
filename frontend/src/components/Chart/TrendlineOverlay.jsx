@@ -96,7 +96,8 @@ const TrendlineOverlay = ({ chart, series, symbol, timeframe, containerRef }) =>
 
     // style
     ctx.lineWidth = 2;
-    ctx.strokeStyle = "#60a5fa"; // blue-400
+    const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+    ctx.strokeStyle = isDark ? "#60a5fa" : "#2563eb"; // blue-400 for dark, blue-600 for light
 
     const drawLine = (p1, p2) => {
       const a = timePriceToXY(p1.time, p1.price);
@@ -221,15 +222,17 @@ const TrendlineOverlay = ({ chart, series, symbol, timeframe, containerRef }) =>
       <div className="absolute top-2 right-2 z-10 flex gap-2">
         <button
           onClick={handleStartDraw}
-          className={`px-2 py-1 text-xs rounded text-slate-200 ${
-            mode === "draw" ? "bg-blue-600 hover:bg-blue-500" : "bg-slate-700 hover:bg-slate-600"
+          className={`px-2 py-1 text-xs rounded-md border border-border/80 font-medium transition-all ${
+            mode === "draw" 
+              ? "bg-primary text-primary-foreground shadow-sm" 
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
           {mode === "draw" ? "Drawing… (Esc to cancel)" : "Draw TL"}
         </button>
         <button
           onClick={handleClear}
-          className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200"
+          className="px-2 py-1 text-xs rounded-md border border-border/80 bg-muted hover:bg-muted/80 text-muted-foreground font-medium transition-all"
         >
           Clear
         </button>

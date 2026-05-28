@@ -14,9 +14,23 @@ import PendingOrders from "../components/PendingOrders";
 import DashboardSidebar from "../components/ui/DashboardSidebar";
 import useTradingStore from "../store/tradingStore";
 import useLanguageStore from "../store/languageStore";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+  BarChart3,
+  TrendingUp,
+  Eye,
+  Activity,
+  Layers,
+  Monitor,
+  Database,
+  Zap,
+} from "lucide-react";
+
+function fadeStyle(delay) {
+  return {
+    opacity: 0,
+    animationDelay: `${delay}s`,
+  };
+}
 
 const Trading = () => {
   const [searchParams] = useSearchParams();
@@ -35,100 +49,143 @@ const Trading = () => {
   const onTrade = () => setRefresh((r) => r + 1);
 
   return (
-    <div className="mx-auto max-w-[1800px] space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {translate("paperTrading")}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Charts, signals, and paper execution in one workspace.
-        </p>
+    <div className="mx-auto max-w-[1800px] space-y-6">
+      {/* Page Header */}
+      <div
+        className="animate-fade-in-up"
+        style={fadeStyle(0.1)}
+      >
+        <div className="flex items-center gap-3 mb-1">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black">
+            <BarChart3 className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-black">
+              {translate("paperTrading")}
+            </h1>
+            <p className="text-sm text-gray-500">
+              Charts, signals, and paper execution in one workspace.
+            </p>
+          </div>
+        </div>
       </div>
 
-      {tradingMode === "VIEWER" ? (
-        <Card className="border-amber-500/35 bg-amber-500/5">
-          <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
+      {/* Mode Banner */}
+      <div
+        className="animate-fade-in-up"
+        style={fadeStyle(0.15)}
+      >
+        {tradingMode === "VIEWER" ? (
+          <div className="flex flex-col gap-4 rounded-[24px] border border-amber-200 bg-amber-50 px-6 py-5 sm:flex-row sm:items-center sm:justify-between shadow-sm hover:shadow-md transition-all duration-300">
             <div>
-              <p className="font-medium text-amber-600 dark:text-amber-400">
+              <p className="font-semibold text-amber-700 flex items-center gap-2">
+                <Eye className="h-4 w-4" />
                 {translate("viewerMode")}
               </p>
-              <p className="text-muted-foreground mt-1 text-sm">
+              <p className="mt-1 text-sm text-amber-600/80">
                 {translate("viewerModeDesc")}
               </p>
             </div>
-            <Button onClick={() => setTradingMode("PAPER")}>
+            <button
+              type="button"
+              onClick={() => setTradingMode("PAPER")}
+              className="rounded-full bg-black px-6 py-2.5 text-sm font-medium text-white transition-all hover:bg-gray-800 hover:shadow-lg"
+            >
               {translate("enablePaperTrading")}
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-emerald-500/35 bg-emerald-500/5">
-          <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 rounded-[24px] border border-emerald-200 bg-emerald-50 px-6 py-5 sm:flex-row sm:items-center sm:justify-between shadow-sm hover:shadow-md transition-all duration-300">
             <div>
-              <p className="font-medium text-emerald-600 dark:text-emerald-400">
+              <p className="font-semibold text-emerald-700 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
                 {translate("paperTradingMode")}
               </p>
-              <p className="text-muted-foreground mt-1 text-sm">
+              <p className="mt-1 text-sm text-emerald-600/80">
                 {translate("paperTradingModeDesc")}
               </p>
             </div>
-            <Button variant="secondary" onClick={() => setTradingMode("VIEWER")}>
+            <button
+              type="button"
+              onClick={() => setTradingMode("VIEWER")}
+              className="rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 hover:shadow"
+            >
               {translate("switchToViewerMode")}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      <StockSearch onSelect={setSymbol} />
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Symbol
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-primary font-mono text-xl font-semibold">{symbol}</p>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Mode
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge variant="secondary" className="text-sm">
-              {tradingMode}
-            </Badge>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Panels
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="font-medium">
-              {tradingMode === "PAPER" ? "Orders & portfolio" : "View only"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Data
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm">Quotes ~10s refresh</p>
-          </CardContent>
-        </Card>
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-12 gap-4 lg:gap-5">
+      {/* Stock Search */}
+      <div
+        className="animate-fade-in-up"
+        style={fadeStyle(0.2)}
+      >
+        <StockSearch onSelect={setSymbol} />
+      </div>
+
+      {/* Stats Grid */}
+      <div
+        className="animate-fade-in-up grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        style={fadeStyle(0.25)}
+      >
+          <div className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="h-4 w-4 text-gray-400" />
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Symbol
+            </p>
+          </div>
+          <p className="font-mono text-2xl font-semibold text-black">{symbol}</p>
+        </div>
+
+          <div className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
+          <div className="flex items-center gap-2 mb-3">
+            <Layers className="h-4 w-4 text-gray-400" />
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Mode
+            </p>
+          </div>
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
+            tradingMode === "PAPER"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              : "bg-gray-100 text-gray-600 border border-gray-200"
+          }`}>
+            {tradingMode}
+          </span>
+        </div>
+
+          <div className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
+          <div className="flex items-center gap-2 mb-3">
+            <Monitor className="h-4 w-4 text-gray-400" />
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Panels
+            </p>
+          </div>
+          <p className="font-medium text-black">
+            {tradingMode === "PAPER" ? "Orders & portfolio" : "View only"}
+          </p>
+        </div>
+
+          <div className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
+          <div className="flex items-center gap-2 mb-3">
+            <Database className="h-4 w-4 text-gray-400" />
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Data
+            </p>
+          </div>
+          <p className="text-sm text-gray-500 flex items-center gap-1.5">
+            <Zap className="h-3.5 w-3.5 text-emerald-500" />
+            Quotes ~10s refresh
+          </p>
+        </div>
+      </div>
+
+      {/* Main Content Grid */}
+      <div
+        className="animate-fade-in-up grid grid-cols-12 gap-4 lg:gap-5"
+        style={fadeStyle(0.3)}
+      >
         <div className="col-span-12 space-y-4 xl:col-span-8">
           <TradingChart symbol={symbol} />
           <StockNews symbol={symbol} />
@@ -149,11 +206,12 @@ const Trading = () => {
           )}
 
           {tradingMode === "VIEWER" && (
-            <Card>
-              <CardContent className="text-muted-foreground py-8 text-center text-sm">
+            <div className="rounded-[24px] border border-gray-100 bg-white p-8 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+              <Eye className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+              <p className="text-sm text-gray-500">
                 {translate("enablePaperTrading")} — {translate("portfolio")}
-              </CardContent>
-            </Card>
+              </p>
+            </div>
           )}
         </DashboardSidebar>
       </div>

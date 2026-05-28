@@ -76,12 +76,12 @@ const CompanyDetails = ({ symbol }) => {
 
   if (loading) {
     return (
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-4 mt-4">
+      <div className="bg-card rounded-xl border border-border p-4 mt-4 shadow-sm">
         <div className="animate-pulse">
-          <div className="h-4 bg-slate-700 rounded w-1/4 mb-3"></div>
+          <div className="h-4 bg-muted rounded w-1/4 mb-3"></div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-12 bg-slate-700 rounded"></div>
+              <div key={i} className="h-12 bg-muted rounded animate-pulse"></div>
             ))}
           </div>
         </div>
@@ -91,8 +91,8 @@ const CompanyDetails = ({ symbol }) => {
 
   if (error) {
     return (
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-4 mt-4">
-        <div className="text-red-400 text-sm">{error}</div>
+      <div className="bg-card rounded-xl border border-border p-4 mt-4 shadow-sm">
+        <div className="text-destructive text-sm font-semibold">{error}</div>
       </div>
     );
   }
@@ -102,18 +102,18 @@ const CompanyDetails = ({ symbol }) => {
   }
 
   const isPositive = details.change >= 0;
-  const changeColor = isPositive ? "text-green-400" : "text-red-400";
+  const changeColor = isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
   const changeSymbol = isPositive ? "+" : "";
 
   return (
-    <div className="bg-slate-800 rounded-lg border border-slate-700 p-4 mt-4">
+    <div className="bg-card text-card-foreground rounded-xl border border-border p-4 mt-4 shadow-sm">
       {/* Header with company name and price */}
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-slate-200 mb-1">{details.name}</h3>
+        <h3 className="text-lg font-semibold text-card-foreground mb-1">{details.name}</h3>
         <div className="flex items-center gap-4">
-          <div className="text-2xl font-bold text-white flex items-center gap-2">
+          <div className="text-2xl font-bold text-card-foreground flex items-center gap-2">
             <span>{currencySymbol}{details.current_price?.toFixed(2) || "N/A"}</span>
-            <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">{currency}</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">{currency}</span>
           </div>
           <div className={`text-lg font-medium ${changeColor}`}>
             {changeSymbol}{details.change?.toFixed(2) || "0.00"} ({changeSymbol}{formatPercent(details.change_pct)})
@@ -123,8 +123,8 @@ const CompanyDetails = ({ symbol }) => {
 
       {/* Company Description */}
       {details.description && details.description !== "No description available" && (
-        <div className="mb-4 p-3 bg-slate-700/50 rounded-lg">
-          <p className="text-slate-300 text-sm leading-relaxed">
+        <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             {details.description.length > 200 
               ? `${details.description.substring(0, 200)}...` 
               : details.description}
@@ -135,93 +135,93 @@ const CompanyDetails = ({ symbol }) => {
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Market Cap */}
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="text-slate-400 text-xs mb-1">Market Cap</div>
-          <div className="text-slate-200 font-medium">
+        <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
+          <div className="text-muted-foreground text-xs mb-1">Market Cap</div>
+          <div className="text-card-foreground font-semibold">
             {formatCurrency(details.market_cap)}
           </div>
         </div>
 
         {/* P/E Ratio */}
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="text-slate-400 text-xs mb-1">P/E Ratio</div>
-          <div className="text-slate-200 font-medium">
+        <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
+          <div className="text-muted-foreground text-xs mb-1">P/E Ratio</div>
+          <div className="text-card-foreground font-semibold">
             {formatRatio(details.trailing_pe)}
           </div>
         </div>
 
         {/* Volume */}
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="text-slate-400 text-xs mb-1">Volume</div>
-          <div className="text-slate-200 font-medium">
+        <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
+          <div className="text-muted-foreground text-xs mb-1">Volume</div>
+          <div className="text-card-foreground font-semibold">
             {formatLargeNumber(details.volume)}
           </div>
         </div>
 
         {/* Avg Volume */}
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="text-slate-400 text-xs mb-1">Avg Volume</div>
-          <div className="text-slate-200 font-medium">
+        <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
+          <div className="text-muted-foreground text-xs mb-1">Avg Volume</div>
+          <div className="text-card-foreground font-semibold">
             {formatLargeNumber(details.avg_volume)}
           </div>
         </div>
 
         {/* Day Range */}
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="text-slate-400 text-xs mb-1">Day Range</div>
-          <div className="text-slate-200 font-medium text-sm">
+        <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
+          <div className="text-muted-foreground text-xs mb-1">Day Range</div>
+          <div className="text-card-foreground font-semibold text-sm">
             {currencySymbol}{details.day_low?.toFixed(2) || "N/A"} - {currencySymbol}{details.day_high?.toFixed(2) || "N/A"}
           </div>
         </div>
 
         {/* 52 Week Range */}
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="text-slate-400 text-xs mb-1">52W Range</div>
-          <div className="text-slate-200 font-medium text-sm">
+        <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
+          <div className="text-muted-foreground text-xs mb-1">52W Range</div>
+          <div className="text-card-foreground font-semibold text-sm">
             {currencySymbol}{details.week_52_low?.toFixed(2) || "N/A"} - {currencySymbol}{details.week_52_high?.toFixed(2) || "N/A"}
           </div>
         </div>
 
         {/* Beta */}
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="text-slate-400 text-xs mb-1">Beta</div>
-          <div className="text-slate-200 font-medium">
+        <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
+          <div className="text-muted-foreground text-xs mb-1">Beta</div>
+          <div className="text-card-foreground font-semibold">
             {formatRatio(details.beta)}
           </div>
         </div>
 
         {/* Dividend Yield */}
-        <div className="bg-slate-700/30 rounded-lg p-3">
-          <div className="text-slate-400 text-xs mb-1">Dividend Yield</div>
-          <div className="text-slate-200 font-medium">
+        <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
+          <div className="text-muted-foreground text-xs mb-1">Dividend Yield</div>
+          <div className="text-card-foreground font-semibold">
             {formatPercent(details.dividend_yield)}
           </div>
         </div>
       </div>
 
       {/* Additional Info Row */}
-      <div className="mt-4 pt-4 border-t border-slate-700">
+      <div className="mt-4 pt-4 border-t border-border">
         <div className="flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">Sector:</span>
-            <span className="text-slate-200">{details.sector}</span>
+            <span className="text-muted-foreground">Sector:</span>
+            <span className="text-card-foreground font-semibold">{details.sector}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">Industry:</span>
-            <span className="text-slate-200">{details.industry}</span>
+            <span className="text-muted-foreground">Industry:</span>
+            <span className="text-card-foreground font-semibold">{details.industry}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">Exchange:</span>
-            <span className="text-slate-200">{details.exchange}</span>
+            <span className="text-muted-foreground">Exchange:</span>
+            <span className="text-card-foreground font-semibold">{details.exchange}</span>
           </div>
           {details.website && (
             <div className="flex items-center gap-2">
-              <span className="text-slate-400">Website:</span>
+              <span className="text-muted-foreground">Website:</span>
               <a 
                 href={details.website} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline"
+                className="text-primary hover:underline font-semibold"
               >
                 Visit
               </a>

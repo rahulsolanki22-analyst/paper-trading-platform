@@ -84,12 +84,12 @@ const AlertsPanel = ({ currentSymbol, currentPrice }) => {
     };
 
     return (
-        <div className="bg-slate-900 p-4 rounded-lg border border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-slate-200 text-lg font-semibold">Price Alerts</h3>
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-card-foreground text-sm font-semibold">Price Alerts</h3>
                 <button
                     onClick={() => setShowCreate(!showCreate)}
-                    className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded transition-colors"
+                    className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md font-medium transition-colors"
                 >
                     {showCreate ? "Cancel" : "+ Alert"}
                 </button>
@@ -97,11 +97,11 @@ const AlertsPanel = ({ currentSymbol, currentPrice }) => {
 
             {/* Create Alert Form */}
             {showCreate && currentSymbol && (
-                <div className="mb-4 p-3 bg-slate-800 rounded-lg">
-                    <div className="text-slate-300 text-sm mb-2">
-                        Alert for <span className="font-semibold text-slate-200">{currentSymbol}</span>
+                <div className="mb-4 p-3 bg-muted border border-border rounded-lg shadow-inner">
+                    <div className="text-muted-foreground text-xs mb-2">
+                        Alert for <span className="font-bold text-card-foreground">{currentSymbol}</span>
                         {currentPrice && (
-                            <span className="text-slate-400"> (Current: ₹{currentPrice})</span>
+                            <span className="text-muted-foreground/80 font-normal"> (Current: ₹{currentPrice})</span>
                         )}
                     </div>
 
@@ -109,7 +109,7 @@ const AlertsPanel = ({ currentSymbol, currentPrice }) => {
                         <select
                             value={newAlert.condition}
                             onChange={(e) => setNewAlert({ ...newAlert, condition: e.target.value })}
-                            className="bg-slate-700 text-slate-200 px-3 py-2 rounded text-sm border border-slate-600"
+                            className="bg-background text-foreground px-3 py-2 rounded-md text-xs border border-border focus:outline-none focus:ring-1 focus:ring-ring"
                         >
                             <option value="ABOVE">Price goes above</option>
                             <option value="BELOW">Price goes below</option>
@@ -119,18 +119,18 @@ const AlertsPanel = ({ currentSymbol, currentPrice }) => {
                             placeholder="Target price"
                             value={newAlert.targetPrice}
                             onChange={(e) => setNewAlert({ ...newAlert, targetPrice: e.target.value })}
-                            className="flex-1 bg-slate-700 text-slate-200 px-3 py-2 rounded text-sm border border-slate-600"
+                            className="flex-1 bg-background text-foreground px-3 py-2 rounded-md text-xs border border-border focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                     </div>
 
                     {error && (
-                        <div className="text-red-400 text-xs mb-2">{error}</div>
+                        <div className="text-destructive text-xs mb-2 font-semibold">{error}</div>
                     )}
 
                     <button
                         onClick={handleCreate}
                         disabled={creating || !newAlert.targetPrice}
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md text-xs font-semibold transition-colors disabled:opacity-50"
                     >
                         {creating ? "Creating..." : "Create Alert"}
                     </button>
@@ -138,16 +138,16 @@ const AlertsPanel = ({ currentSymbol, currentPrice }) => {
             )}
 
             {showCreate && !currentSymbol && (
-                <div className="mb-4 p-3 bg-slate-800 rounded-lg text-slate-400 text-sm text-center">
+                <div className="mb-4 p-3 bg-muted border border-border rounded-lg text-muted-foreground text-xs text-center font-medium">
                     Select a stock to create an alert
                 </div>
             )}
 
             {/* Alerts List */}
             {loading ? (
-                <div className="text-slate-400 text-sm py-4 text-center">Loading...</div>
+                <div className="text-muted-foreground text-xs py-4 text-center">Loading...</div>
             ) : alerts.length === 0 ? (
-                <div className="text-slate-500 text-sm py-4 text-center">
+                <div className="text-muted-foreground/75 text-xs py-4 text-center font-medium">
                     No active alerts.
                     <br />
                     Create alerts to get notified.
@@ -157,23 +157,23 @@ const AlertsPanel = ({ currentSymbol, currentPrice }) => {
                     {alerts.map((alert) => (
                         <div
                             key={alert.id}
-                            className={`p-3 rounded flex items-center justify-between ${alert.symbol === currentSymbol
-                                    ? "bg-purple-900/30 border border-purple-700"
-                                    : "bg-slate-800"
+                            className={`p-3 rounded-lg flex items-center justify-between border transition-all ${alert.symbol === currentSymbol
+                                    ? "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/60"
+                                    : "bg-muted/40 border-border/40 hover:bg-muted/60"
                                 }`}
                         >
                             <div>
-                                <div className="text-slate-200 font-semibold text-sm">{alert.symbol}</div>
-                                <div className="text-slate-400 text-xs">
+                                <div className="text-card-foreground font-semibold text-sm">{alert.symbol}</div>
+                                <div className="text-muted-foreground text-xs font-medium">
                                     {alert.condition === "ABOVE" ? "↑" : "↓"} ₹{alert.target_price}
-                                    <span className="text-slate-500 ml-2">
+                                    <span className="text-muted-foreground/60 ml-2 font-normal">
                                         (now: ₹{alert.current_price})
                                     </span>
                                 </div>
                             </div>
                             <button
                                 onClick={() => handleDelete(alert.id)}
-                                className="text-slate-500 hover:text-red-400 transition-colors p-1"
+                                className="text-muted-foreground hover:text-destructive transition-colors p-1"
                                 title="Delete alert"
                             >
                                 ✕

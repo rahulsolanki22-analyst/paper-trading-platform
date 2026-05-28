@@ -53,7 +53,7 @@ export function TradingHistoryTab({ trades }) {
                 className="border-white/5 transition-colors hover:bg-white/[0.03]"
               >
                 <TableCell>
-                  <div className="font-mono text-sm font-medium">{t.symbol}</div>
+                  <div className="font-mono text-sm font-medium text-zinc-200">{t.symbol}</div>
                   <div className="text-xs text-muted-foreground">{t.name}</div>
                 </TableCell>
                 <TableCell>
@@ -66,10 +66,10 @@ export function TradingHistoryTab({ trades }) {
                     {t.side}
                   </span>
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm tabular-nums">
+                <TableCell className="text-right font-mono text-sm tabular-nums text-zinc-200">
                   ₹{t.price.toLocaleString("en-IN")}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{t.quantity}</TableCell>
+                <TableCell className="text-right tabular-nums text-zinc-200">{t.quantity}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{fmtDate(t.date)}</TableCell>
                 <TableCell
                   className={cn(

@@ -5,12 +5,14 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from dotenv import load_dotenv
 import logging
+from fastapi.staticfiles import StaticFiles
 from app.database import Base, engine
 from app.routes import (
     market, portfolio, trading, indicators, signals,
     backtest, dataset, ml_signal, search, news,
     valuation, reset, stocks, auth, markets,
-    analytics, watchlist, alerts, ai_features, markets_hub
+    analytics, watchlist, alerts, ai_features, markets_hub,
+    diary
 )
 
 
@@ -24,7 +26,8 @@ from app.models import (
     watchlist as watchlist_model,
     pending_order as pending_order_model,
     bot_config as bot_model,
-    markets_stock as markets_stock_model
+    markets_stock as markets_stock_model,
+    diary as diary_model
 )
 
 load_dotenv()
@@ -103,9 +106,15 @@ app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 app.include_router(watchlist.router, prefix="/watchlist", tags=["watchlist"])
 app.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
 app.include_router(ai_features.router, prefix="/ai", tags=["ai"])
+app.include_router(diary.router, prefix="/diary", tags=["diary"])
 
 # Markets Hub (HTTP routes + WebSocket)
 app.include_router(markets_hub.router, prefix="/api/markets", tags=["markets-hub"])
+
+# Mount static files for diary uploads
+import os
+uploads_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/uploads"))
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 @app.get("/")
 def root():

@@ -54,9 +54,9 @@ const PendingOrders = () => {
 
     const getConditionBadge = (condition) => {
         const styles = {
-            STOP_LOSS: "bg-red-900/50 text-red-400 border-red-700",
-            TAKE_PROFIT: "bg-green-900/50 text-green-400 border-green-700",
-            TRAILING_STOP: "bg-yellow-900/50 text-yellow-400 border-yellow-700"
+            STOP_LOSS: "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60",
+            TAKE_PROFIT: "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800/60",
+            TRAILING_STOP: "bg-yellow-50 dark:bg-yellow-950/30 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/60"
         };
         const labels = {
             STOP_LOSS: "Stop Loss",
@@ -64,7 +64,7 @@ const PendingOrders = () => {
             TRAILING_STOP: "Trailing Stop"
         };
         return (
-            <span className={`text-xs px-2 py-0.5 rounded border ${styles[condition]}`}>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-semibold tracking-wide ${styles[condition]}`}>
                 {labels[condition]}
             </span>
         );
@@ -75,33 +75,33 @@ const PendingOrders = () => {
     }
 
     return (
-        <div className="bg-slate-900 p-4 rounded-lg border border-slate-700">
-            <h3 className="text-slate-200 text-lg font-semibold mb-4">Pending Orders</h3>
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
+            <h3 className="text-card-foreground text-sm font-semibold mb-3">Pending Orders</h3>
 
             {loading ? (
-                <div className="text-slate-400 text-sm py-2 text-center">Loading...</div>
+                <div className="text-muted-foreground text-sm py-2 text-center">Loading...</div>
             ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                     {orders.map((order) => (
                         <div
                             key={order.id}
-                            className="p-3 bg-slate-800 rounded flex items-center justify-between"
+                            className="p-3 bg-muted/40 border border-border/50 rounded-lg flex items-center justify-between transition-all hover:bg-muted/60"
                         >
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-slate-200 font-semibold">{order.symbol}</span>
+                                    <span className="text-card-foreground font-semibold">{order.symbol}</span>
                                     {getConditionBadge(order.condition)}
                                 </div>
-                                <div className="text-slate-400 text-xs">
+                                <div className="text-muted-foreground text-xs font-medium">
                                     {order.order_type} {order.quantity} @ ₹{order.trigger_price}
-                                    <span className="text-slate-500 ml-2">
+                                    <span className="text-muted-foreground/60 ml-2 font-normal">
                                         (now: ₹{order.current_price})
                                     </span>
                                 </div>
                             </div>
                             <button
                                 onClick={() => handleCancel(order.id)}
-                                className="text-slate-400 hover:text-red-400 transition-colors text-sm px-2 py-1"
+                                className="text-muted-foreground hover:text-destructive font-medium transition-colors text-sm px-2 py-1"
                             >
                                 Cancel
                             </button>

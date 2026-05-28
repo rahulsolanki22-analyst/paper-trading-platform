@@ -29,11 +29,11 @@ export function WatchlistTab({ items, onRemove, onAdd }) {
         >
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-2">
-              <span className="font-mono text-base font-semibold tracking-tight">{row.symbol}</span>
+              <span className="font-mono text-base font-semibold tracking-tight text-zinc-200">{row.symbol}</span>
               <span className="text-xs text-muted-foreground">{row.name}</span>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-              <span className="font-mono tabular-nums text-foreground">₹{row.price.toLocaleString("en-IN")}</span>
+              <span className="font-mono tabular-nums text-zinc-200">₹{row.price.toLocaleString("en-IN")}</span>
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",

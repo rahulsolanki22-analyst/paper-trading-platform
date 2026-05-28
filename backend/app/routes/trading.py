@@ -5,6 +5,7 @@ from app.models.portfolio import Portfolio
 from app.models.trade import Trade
 from app.models.order import OrderHistory
 from app.models.pending_order import PendingOrder
+from app.models.diary import TradeDiary
 from app.services.market_data import fetch_stock_data, get_live_price
 from app.services.fx import detect_currency, fx_to_inr_rate
 from app.services.risk import check_stop_loss
@@ -126,6 +127,17 @@ def buy_stock(
             )
             db.add(pending)
 
+        # Open a new Diary Entry
+        diary = TradeDiary(
+            user_id=current_user.id,
+            symbol=symbol,
+            trade_type="BUY",
+            quantity=quantity,
+            buy_price=price_inr,
+            status="OPEN"
+        )
+        db.add(diary)
+
         db.commit()
 
         return {
@@ -222,6 +234,22 @@ def sell_stock(
         # Remove trade if quantity is zero
         if trade.quantity == 0:
             db.delete(trade)
+
+        # Close the oldest open Diary Entry for this symbol
+        diary = db.query(TradeDiary).filter(
+            TradeDiary.user_id == current_user.id,
+            TradeDiary.symbol == symbol,
+            TradeDiary.status == "OPEN"
+        ).order_by(TradeDiary.created_at.asc()).first()
+        
+        if diary:
+            diary.sell_price = sell_price_inr
+            diary.sell_time = datetime.utcnow()
+            diary.pnl = pnl
+            diary.status = "CLOSED"
+            if diary.buy_time:
+                diff = diary.sell_time - diary.buy_time
+                diary.holding_duration_mins = diff.total_seconds() / 60.0
 
         db.commit()
 

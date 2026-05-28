@@ -198,7 +198,7 @@ export function OverviewTab({ stats, dailyPnl, dailyPnlPercent, portfolioSeries,
                     key={t.id}
                     className="border-white/5 transition-colors hover:bg-white/[0.03]"
                   >
-                    <TableCell className="font-mono text-xs font-medium">{t.symbol}</TableCell>
+                    <TableCell className="font-mono text-xs font-medium text-zinc-200">{t.symbol}</TableCell>
                     <TableCell>
                       <span
                         className={cn(
@@ -211,8 +211,8 @@ export function OverviewTab({ stats, dailyPnl, dailyPnlPercent, portfolioSeries,
                         {t.side}
                       </span>
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{t.quantity || "100"}</TableCell>
-                    <TableCell className="font-mono text-xs">₹{t.price?.toFixed(2) || "0.00"}</TableCell>
+                    <TableCell className="font-mono text-xs text-zinc-200">{t.quantity}</TableCell>
+                    <TableCell className="font-mono text-xs text-zinc-200">₹{t.price?.toFixed(2) || "0.00"}</TableCell>
                     <TableCell
                       className={cn(
                         "text-right font-mono text-xs font-semibold tabular-nums",

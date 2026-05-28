@@ -10,7 +10,7 @@ function initialsFromUser(username, email) {
   if (u.length >= 2) return u.slice(0, 2).toUpperCase();
   const e = (email || "").trim();
   if (e.length >= 2) return e.slice(0, 2).toUpperCase();
-  return "PT";
+  return "ST";
 }
 
 function formatChartDate(isoDate) {
@@ -96,7 +96,7 @@ export async function fetchProfileCore() {
     id: me?.id != null ? String(me.id) : "me",
     username: me?.username || "Trader",
     email: me?.email || "",
-    accountType: "Free",
+    accountType: me?.account_type || "Paper Trading",
     avatarUrl: null,
     initials: initialsFromUser(me?.username, me?.email),
   };

@@ -30,9 +30,9 @@ export default function Profile() {
         id: "me",
         username: authUser?.username || "Trader",
         email: "",
-        accountType: "Free",
+        accountType: authUser?.account_type || "Paper Trading",
         avatarUrl: null,
-        initials: (authUser?.username || "PT").slice(0, 2).toUpperCase(),
+        initials: (authUser?.username || "ST").slice(0, 2).toUpperCase(),
       };
     }
     return {

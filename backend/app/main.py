@@ -82,19 +82,28 @@ _seed_demo_account()
 
 app = FastAPI(title="AI Paper Trading Backend")
 
-# CORS configuration - read allowed origins from env
-_cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:3000,http://127.0.0.1:3000")
-_cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+# CORS configuration - read allowed origins from env or dynamically match requesting origins
+_cors_raw = os.getenv("CORS_ORIGINS", "")
+_configured_origins = [o.strip() for o in _cors_raw.split(",") if o.strip() and o.strip() != "*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origins=_configured_origins if _configured_origins else ["*"],
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+def _get_cors_headers(request: Request):
+    origin = request.headers.get("origin") or "*"
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*",
+    }
 
 # Lightweight In-Memory Rate Limiter Middleware
 import time
@@ -117,13 +126,12 @@ async def rate_limit_middleware(request: Request, call_next):
     recent_requests = [t for t in _rate_limits[client_ip] if now - t < 60]
     
     if len(recent_requests) >= _MAX_REQUESTS_PER_MINUTE:
+        headers = _get_cors_headers(request)
+        headers["Retry-After"] = "60"
         return JSONResponse(
             status_code=429,
             content={"detail": "Too many requests. Please slow down."},
-            headers={
-                "Access-Control-Allow-Origin": _cors_origins[0] if _cors_origins else "*",
-                "Retry-After": "60",
-            }
+            headers=headers
         )
     
     recent_requests.append(now)
@@ -137,10 +145,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
-        headers={
-            "Access-Control-Allow-Origin": _cors_origins[0] if _cors_origins else "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
+        headers=_get_cors_headers(request)
     )
 
 @app.exception_handler(RequestValidationError)
@@ -148,10 +153,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": exc.errors()},
-        headers={
-            "Access-Control-Allow-Origin": _cors_origins[0] if _cors_origins else "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
+        headers=_get_cors_headers(request)
     )
 
 @app.exception_handler(Exception)
@@ -160,10 +162,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error"},
-        headers={
-            "Access-Control-Allow-Origin": _cors_origins[0] if _cors_origins else "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
+        headers=_get_cors_headers(request)
     )
 
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])

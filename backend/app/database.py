@@ -11,6 +11,12 @@ _DEFAULT_SQLITE = f"sqlite:///{(_BACKEND_DIR / 'paper_trading.db').as_posix()}"
 
 DATABASE_URL = os.getenv("DATABASE_URL", _DEFAULT_SQLITE)
 
+# Normalize postgres URL schemes for SQLAlchemy 2.0 & psycopg2
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+elif DATABASE_URL.startswith("postgresql://") and "+psycopg" not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+
 # SQLite needs check_same_thread=False; PostgreSQL does not.
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):

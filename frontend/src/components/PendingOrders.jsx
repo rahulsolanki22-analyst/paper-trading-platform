@@ -32,7 +32,8 @@ const PendingOrders = () => {
                 const result = await checkPendingOrders();
                 if (result.triggered_count > 0) {
                     loadOrders();
-                    alert(`⚡ ${result.triggered_count} pending order(s) triggered!`);
+                    // Inline status update instead of blocking alert
+                    console.info(`⚡ ${result.triggered_count} pending order(s) triggered`);
                 }
             } catch (err) {
                 console.error("Error checking pending orders:", err);

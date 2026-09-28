@@ -15,6 +15,9 @@ from app.utils.auth import get_current_user, get_db
 
 router = APIRouter()
 
+import time
+from concurrent.futures import ThreadPoolExecutor
+
 # Starter symbols for the Markets page grid.
 # Seeded per-user only when they have not added any yet.
 DEFAULT_MARKETS_STOCKS = [
@@ -37,6 +40,30 @@ DEFAULT_MARKETS_STOCKS = [
     "ITC.NS",
 ]
 
+DEFAULT_STOCKS_NAMES = {
+    "AAPL": "Apple Inc.",
+    "MSFT": "Microsoft Corporation",
+    "GOOGL": "Alphabet Inc.",
+    "AMZN": "Amazon.com, Inc.",
+    "META": "Meta Platforms, Inc.",
+    "TSLA": "Tesla, Inc.",
+    "NVDA": "NVIDIA Corporation",
+    "NFLX": "Netflix, Inc.",
+    "RELIANCE.NS": "Reliance Industries Limited",
+    "TCS.NS": "Tata Consultancy Services Limited",
+    "INFY.NS": "Infosys Limited",
+    "HDFCBANK.NS": "HDFC Bank Limited",
+    "ICICIBANK.NS": "ICICI Bank Limited",
+    "SBIN.NS": "State Bank of India",
+    "ITC.NS": "ITC Limited",
+}
+
+_metadata_cache = {}  # {sym: {"name": ..., "prev_close": ..., "timestamp": ...}}
+_metadata_ttl = 3600 * 4  # 4 hours
+
+_quote_cache = {}  # {sym: (quote_dict, timestamp)}
+_quote_ttl = 30  # 30 seconds
+
 
 class MarketsStockCreate(BaseModel):
     symbol: str
@@ -47,22 +74,49 @@ def _quote(symbol: str):
     if not sym:
         raise ValueError("Empty symbol")
 
-    # Best-effort info from yfinance
-    name = None
+    now = time.time()
+    
+    # Try quote cache first for live price freshness
+    cached_q = _quote_cache.get(sym)
+    if cached_q and (now - cached_q[1] < _quote_ttl):
+        return cached_q[0]
+
+    # Best-effort info from yfinance or cache
+    name = DEFAULT_STOCKS_NAMES.get(sym)
     prev_close = None
-    try:
-        t = yf.Ticker(sym)
-        fi = t.fast_info
-        prev_close = getattr(fi, "previous_close", None) or (
-            fi.get("previous_close") if isinstance(fi, dict) else None
-        )
-        # name is not in fast_info; fallback to .info
-        info = t.info
-        name = info.get("shortName") or info.get("longName")
-        if prev_close is None:
-            prev_close = info.get("regularMarketPreviousClose")
-    except Exception:
-        pass
+
+    # Check metadata cache
+    cached_meta = _metadata_cache.get(sym)
+    if cached_meta and (now - cached_meta["timestamp"] < _metadata_ttl):
+        if not name:
+            name = cached_meta.get("name")
+        prev_close = cached_meta.get("prev_close")
+    
+    # If not in cache, fetch it
+    if not name or prev_close is None:
+        try:
+            t = yf.Ticker(sym)
+            fi = t.fast_info
+            if prev_close is None:
+                prev_close = getattr(fi, "previous_close", None) or (
+                    fi.get("previous_close") if isinstance(fi, dict) else None
+                )
+            
+            if not name:
+                # Bypassing slow .info if we can
+                info = t.info
+                name = info.get("shortName") or info.get("longName")
+                if prev_close is None:
+                    prev_close = info.get("regularMarketPreviousClose")
+            
+            # Save to metadata cache
+            _metadata_cache[sym] = {
+                "name": name,
+                "prev_close": prev_close,
+                "timestamp": now
+            }
+        except Exception:
+            pass
 
     native_price = float(get_live_price(sym))
     if native_price <= 0:
@@ -76,16 +130,18 @@ def _quote(symbol: str):
     if prev_close and prev_close > 0:
         change_pct = round(((native_price - float(prev_close)) / float(prev_close)) * 100, 2)
 
-    return {
+    res = {
         "symbol": sym,
         "name": name or sym,
         "change_pct": change_pct,
-        # Option C style data
         "native_currency": native_currency,
         "native_price": round(native_price, 4),
         "fx_to_inr": round(fx_rate, 6),
         "price_inr": round(price_inr, 2),
     }
+    
+    _quote_cache[sym] = (res, now)
+    return res
 
 
 @router.get("/stocks")
@@ -116,23 +172,24 @@ def list_markets_stocks(
             .all()
         )
 
-    result = []
-    for item in items:
+    def fetch_one(item):
         try:
-            result.append(_quote(item.symbol))
+            return _quote(item.symbol)
         except Exception:
             # Keep the symbol visible even if quote fails temporarily
-            result.append(
-                {
-                    "symbol": item.symbol,
-                    "name": item.symbol,
-                    "change_pct": 0.0,
-                    "native_currency": "USD",
-                    "native_price": 0.0,
-                    "fx_to_inr": 1.0,
-                    "price_inr": 0.0,
-                }
-            )
+            return {
+                "symbol": item.symbol,
+                "name": item.symbol,
+                "change_pct": 0.0,
+                "native_currency": "USD",
+                "native_price": 0.0,
+                "fx_to_inr": 1.0,
+                "price_inr": 0.0,
+            }
+
+    # Fetch quotes in parallel using ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        result = list(executor.map(fetch_one, items))
 
     return {"stocks": result, "count": len(result)}
 

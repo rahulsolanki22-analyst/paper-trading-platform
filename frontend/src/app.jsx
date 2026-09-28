@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import MarketsHub from "./pages/MarketsHub";
 import TradingDiary from "./pages/TradingDiary";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -65,6 +66,17 @@ function App() {
             <AppLayout>
               <MarketsHub />
             </AppLayout>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Profile />
+              </AppLayout>
+            </ProtectedRoute>
           }
         />
       </Routes>

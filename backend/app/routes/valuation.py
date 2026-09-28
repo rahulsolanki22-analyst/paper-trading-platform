@@ -16,7 +16,10 @@ except Exception:
 
 router = APIRouter()
 
-_prev_close_cache = {}
+from collections import OrderedDict
+
+_MAX_PREV_CLOSE_CACHE = 200
+_prev_close_cache = OrderedDict()
 _prev_close_ttl = 600  # 10 minutes
 
 def _get_prev_close_native(symbol: str) -> Optional[float]:
@@ -46,6 +49,8 @@ def _get_prev_close_native(symbol: str) -> Optional[float]:
         except Exception:
             prev_close = None
     if prev_close is not None:
+        if len(_prev_close_cache) >= _MAX_PREV_CLOSE_CACHE:
+            _prev_close_cache.popitem(last=False)
         _prev_close_cache[symbol] = (prev_close, now)
     return prev_close
 
@@ -80,7 +85,7 @@ def portfolio_valuation(
 
         h = holdings[t.symbol]
         total_cost = h["avg_buy_price"] * h["quantity"]
-        total_cost += t.buy_price * t.quantity
+        total_cost += float(t.buy_price) * t.quantity
         h["quantity"] += t.quantity
         h["avg_buy_price"] = total_cost / h["quantity"]
 
@@ -136,10 +141,10 @@ def portfolio_valuation(
 
     return {
         # Cash balance assumed already in INR for paper trading
-        "cash_balance": round(portfolio.balance, 2),
+        "cash_balance": round(float(portfolio.balance), 2),
         "base_currency": "INR",
         "holdings": result,
         "currency_breakdown_native": {k: round(v, 2) for k, v in currency_breakdown_native.items()},
-        "total_portfolio_value": round(portfolio.balance + total_holdings_value_base, 2),
+        "total_portfolio_value": round(float(portfolio.balance) + total_holdings_value_base, 2),
         "daily_portfolio_pnl": round(total_daily_pnl_base, 2)
     }

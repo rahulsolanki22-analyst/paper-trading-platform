@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const TradePanel = ({ symbol, onTrade }) => {
-  const { tradingMode } = useTradingStore();
   const { isAuthenticated } = useAuthStore();
   const { translate } = useLanguageStore();
   const [quantity, setQuantity] = useState("");
@@ -71,11 +70,6 @@ const TradePanel = ({ symbol, onTrade }) => {
       return;
     }
 
-    if (tradingMode !== "PAPER") {
-      setError("Trading is disabled in Viewer Mode");
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -109,11 +103,6 @@ const TradePanel = ({ symbol, onTrade }) => {
       return;
     }
 
-    if (tradingMode !== "PAPER") {
-      setError("Trading is disabled in Viewer Mode");
-      return;
-    }
-
     const ownsStock = holdings.some((h) => h.symbol === symbol);
     if (!ownsStock) {
       setError("You don't own this stock");
@@ -144,7 +133,7 @@ const TradePanel = ({ symbol, onTrade }) => {
 
   const ownsStock = holdings.some((h) => h.symbol === symbol);
   const holding = ownsStock ? holdings.find((h) => h.symbol === symbol) : null;
-  const isDisabled = tradingMode !== "PAPER" || loading;
+  const isDisabled = loading;
   const quantityValid =
     quantity && Number(quantity) > 0 && Number.isInteger(Number(quantity));
 
@@ -263,12 +252,10 @@ const TradePanel = ({ symbol, onTrade }) => {
           variant="destructive"
           className="w-full"
           onClick={() => {
-            if (window.confirm("Reset portfolio to ₹100,000? This cannot be undone.")) {
-              resetPortfolio(100000).then(() => {
-                setSuccess("Portfolio reset to ₹100,000");
-                onTrade();
-              });
-            }
+            resetPortfolio(100000).then(() => {
+              setSuccess("Portfolio reset to ₹100,000");
+              onTrade();
+            });
           }}
         >
           {translate("resetPaperMoney")}

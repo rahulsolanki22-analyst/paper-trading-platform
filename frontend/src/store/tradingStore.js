@@ -8,8 +8,8 @@ const useTradingStore = create(
       symbol: 'AAPL',
       setSymbol: (symbol) => set({ symbol }),
 
-      // Trading mode: 'VIEWER' | 'PAPER'
-      tradingMode: 'VIEWER',
+      // Trading mode: 'PAPER'
+      tradingMode: 'PAPER',
       setTradingMode: (mode) => set({ tradingMode: mode }),
 
       // Chart timeframe
@@ -20,7 +20,6 @@ const useTradingStore = create(
       indicators: {
         sma: false,
         ema: false,
-        rsi: false,
         macd: false,
         vwap: false,
       },

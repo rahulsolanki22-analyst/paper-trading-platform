@@ -40,10 +40,10 @@ const Stocks = () => {
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const res = await searchStocks(query.trim());
+        const res = await searchStocks(query.trim(), ctrl.signal);
         setSuggestions(Array.isArray(res) ? res : []);
-      } catch {
-        setSuggestions([]);
+      } catch (err) {
+        if (err?.name !== "CanceledError") setSuggestions([]);
       }
     }, 250);
 
@@ -103,18 +103,18 @@ const Stocks = () => {
       </div>
 
       {/* Search / Add section (Markets page only) */}
-      <div className="rounded-2xl border border-white/10 bg-muted/20 p-4 backdrop-blur-sm">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="relative flex-1">
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search symbol (e.g. TSLA, RELIANCE.NS)…"
-              className="h-11 rounded-xl bg-zinc-950/40"
+              className="h-11 rounded-xl bg-background border-input text-foreground placeholder:text-muted-foreground"
             />
 
             {suggestions.length > 0 ? (
-              <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl">
+              <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
                 <div className="max-h-72 overflow-y-auto">
                   {suggestions.map((sug) => (
                     <button
@@ -125,10 +125,10 @@ const Stocks = () => {
                         setQuery(`${sug.symbol}`);
                         setSuggestions([]);
                       }}
-                      className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.06]"
+                      className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
                     >
                       <div className="min-w-0">
-                        <div className="font-mono font-semibold">{sug.symbol}</div>
+                        <div className="font-mono font-semibold text-foreground">{sug.symbol}</div>
                         <div className="text-muted-foreground line-clamp-1 text-xs">{sug.name}</div>
                       </div>
                       <div className="text-muted-foreground shrink-0 text-xs">{sug.exchange || ""}</div>
@@ -150,7 +150,7 @@ const Stocks = () => {
         </div>
 
         {errMsg ? (
-          <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">
             {errMsg}
           </div>
         ) : null}

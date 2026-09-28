@@ -10,8 +10,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Cache for recent data (5 minutes)
-_data_cache = {}
+from collections import OrderedDict
+
+# Cache for recent data (5 minutes, max 500 entries)
+_MAX_CACHE_SIZE = 500
+_data_cache = OrderedDict()
 _cache_ttl = 300  # 5 minutes
 
 def _get_cached_data(cache_key: str):
@@ -24,7 +27,9 @@ def _get_cached_data(cache_key: str):
     return None
 
 def _set_cached_data(cache_key: str, data):
-    """Cache data with timestamp."""
+    """Cache data with timestamp, evicting oldest if full."""
+    if len(_data_cache) >= _MAX_CACHE_SIZE:
+        _data_cache.popitem(last=False)
     _data_cache[cache_key] = (data, time.time())
 
 def fetch_stock_data(

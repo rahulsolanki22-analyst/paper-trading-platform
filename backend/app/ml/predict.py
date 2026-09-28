@@ -1,3 +1,4 @@
+import warnings
 import joblib
 import pandas as pd
 from app.services.indicators import ema, rsi, macd
@@ -6,17 +7,23 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Load models once
+# Load models once (filter version mismatch warnings from serialization)
 try:
-    logreg = joblib.load("app/ml/models/logistic.pkl")
-    rf = joblib.load("app/ml/models/random_forest.pkl")
-    xgb = joblib.load("app/ml/models/xgboost.pkl")
-    # Optional calibrated model (reduces extreme 0/1 confidence)
-    try:
-        xgb_calibrated = joblib.load("app/ml/models/xgboost_calibrated.pkl")
-    except Exception:
-        xgb_calibrated = None
-    le = joblib.load("app/ml/models/label_encoder.pkl")
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        try:
+            from sklearn.exceptions import InconsistentVersionWarning
+            warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
+        except ImportError:
+            pass
+        logreg = joblib.load("app/ml/models/logistic.pkl")
+        rf = joblib.load("app/ml/models/random_forest.pkl")
+        xgb = joblib.load("app/ml/models/xgboost.pkl")
+        try:
+            xgb_calibrated = joblib.load("app/ml/models/xgboost_calibrated.pkl")
+        except Exception:
+            xgb_calibrated = None
+        le = joblib.load("app/ml/models/label_encoder.pkl")
 except Exception as e:
     logger.error(f"Error loading ML models: {str(e)}")
     logreg = rf = xgb = xgb_calibrated = le = None

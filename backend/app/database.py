@@ -4,15 +4,19 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# NOTE: Using a relative SQLite path (./paper_trading.db) makes the DB location
-# depend on the process working directory, which can change between restarts.
-# Use a stable absolute path under the backend directory by default.
+# Primary: PostgreSQL (set DATABASE_URL in .env)
+# Fallback: SQLite for quick local dev when DATABASE_URL is unset.
 _BACKEND_DIR = Path(__file__).resolve().parents[1]
-_DEFAULT_DB_PATH = _BACKEND_DIR / "paper_trading.db"
+_DEFAULT_SQLITE = f"sqlite:///{(_BACKEND_DIR / 'paper_trading.db').as_posix()}"
 
-DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{_DEFAULT_DB_PATH.as_posix()}"
+DATABASE_URL = os.getenv("DATABASE_URL", _DEFAULT_SQLITE)
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# SQLite needs check_same_thread=False; PostgreSQL does not.
+connect_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()

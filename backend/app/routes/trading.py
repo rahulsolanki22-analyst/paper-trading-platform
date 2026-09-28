@@ -26,15 +26,21 @@ def buy_stock(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Validate inputs
     if quantity <= 0:
         raise HTTPException(
             status_code=400,
             detail="Quantity must be positive"
         )
+    symbol = symbol.strip().upper()
+    if not symbol or len(symbol) > 20:
+        raise HTTPException(status_code=400, detail="Invalid symbol")
 
     try:
-        # Get user's portfolio
-        portfolio = db.query(Portfolio).filter(Portfolio.user_id == current_user.id).first()
+        # Lock portfolio row to prevent race conditions
+        portfolio = db.query(Portfolio).filter(
+            Portfolio.user_id == current_user.id
+        ).with_for_update().first()
         if not portfolio:
             raise HTTPException(status_code=400, detail="Portfolio not found")
 
@@ -55,7 +61,7 @@ def buy_stock(
         price_inr = price * fx_rate
         total_cost = price_inr * quantity
 
-        if total_cost > portfolio.balance:
+        if total_cost > float(portfolio.balance):
             raise HTTPException(status_code=400, detail="Insufficient balance")
 
         if stop_loss is not None:
@@ -73,19 +79,19 @@ def buy_stock(
                 )
 
         # Update portfolio balance
-        portfolio.balance -= total_cost
+        portfolio.balance = float(portfolio.balance) - total_cost
 
-        # Update or create trade position (filter by user_id)
+        # Lock and update or create trade position
         trade = db.query(Trade).filter(
             Trade.symbol == symbol,
             Trade.user_id == current_user.id
-        ).first()
+        ).with_for_update().first()
 
         if trade:
             # Update existing holding (weighted average)
             total_qty = trade.quantity + quantity
             trade.buy_price = (
-                (trade.buy_price * trade.quantity) + (price * quantity)
+                (float(trade.buy_price) * trade.quantity) + (price * quantity)
             ) / total_qty
             trade.quantity = total_qty
 
@@ -151,7 +157,7 @@ def buy_stock(
             "fx_to_inr": round(fx_rate, 6),
             "stop_loss": stop_loss,
             "take_profit": take_profit,
-            "remaining_balance": round(portfolio.balance, 2),
+            "remaining_balance": round(float(portfolio.balance), 2),
             "order_id": order.id
         }
     except HTTPException:
@@ -160,7 +166,7 @@ def buy_stock(
     except Exception as e:
         db.rollback()
         logger.error(f"Error in buy_stock: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Order failed. Please try again.")
 
 @router.post("/sell")
 def sell_stock(
@@ -174,18 +180,23 @@ def sell_stock(
             status_code=400,
             detail="Quantity must be positive"
         )
+    symbol = symbol.strip().upper()
+    if not symbol or len(symbol) > 20:
+        raise HTTPException(status_code=400, detail="Invalid symbol")
 
     try:
-        # Get user's portfolio
-        portfolio = db.query(Portfolio).filter(Portfolio.user_id == current_user.id).first()
+        # Lock portfolio row to prevent race conditions
+        portfolio = db.query(Portfolio).filter(
+            Portfolio.user_id == current_user.id
+        ).with_for_update().first()
         if not portfolio:
             raise HTTPException(status_code=400, detail="Portfolio not found")
             
-        # Get user's trade (filter by user_id)
+        # Lock trade row
         trade = db.query(Trade).filter(
             Trade.symbol == symbol,
             Trade.user_id == current_user.id
-        ).first()
+        ).with_for_update().first()
 
         if not trade:
             raise HTTPException(status_code=400, detail="Stock not owned")
@@ -210,13 +221,12 @@ def sell_stock(
         sell_price_inr = sell_price * fx_rate
         total_value = sell_price_inr * quantity
 
-        # Calculate P&L in base currency (INR) to stay consistent with portfolio balance.
-        # trade.buy_price is stored in native currency; we convert using current FX for simplicity.
-        pnl = (sell_price_inr - (trade.buy_price * fx_rate)) * quantity
-        trade.realized_pnl += pnl
+        # Calculate P&L in base currency (INR)
+        pnl = (sell_price_inr - (float(trade.buy_price) * fx_rate)) * quantity
+        trade.realized_pnl = float(trade.realized_pnl) + pnl
 
         # Update portfolio
-        portfolio.balance += total_value
+        portfolio.balance = float(portfolio.balance) + total_value
         trade.quantity -= quantity
 
         # Record order history
@@ -244,7 +254,7 @@ def sell_stock(
         
         if diary:
             diary.sell_price = sell_price_inr
-            diary.sell_time = datetime.utcnow()
+            diary.sell_time = datetime.now(datetime.UTC) if hasattr(datetime, 'UTC') else datetime.utcnow()
             diary.pnl = pnl
             diary.status = "CLOSED"
             if diary.buy_time:
@@ -260,7 +270,7 @@ def sell_stock(
             "sell_price": round(sell_price_inr, 2),
             "total_value": round(total_value, 2),
             "pnl": round(pnl, 2),
-            "balance": round(portfolio.balance, 2),
+            "balance": round(float(portfolio.balance), 2),
             "native_currency": native_currency,
             "native_price": round(sell_price, 4),
             "fx_to_inr": round(fx_rate, 6),
@@ -272,7 +282,7 @@ def sell_stock(
     except Exception as e:
         db.rollback()
         logger.error(f"Error in sell_stock: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Order failed. Please try again.")
 
 @router.get("/holdings")
 def get_holdings(
@@ -331,8 +341,9 @@ def get_trading_statistics(
     
     total_buys = sum(1 for o in orders if o.order_type == "BUY")
     total_sells = sum(1 for o in orders if o.order_type == "SELL")
-    total_realized_pnl = sum(o.realized_pnl for o in orders if o.order_type == "SELL")
-    total_volume = sum(o.total_value for o in orders)
+    total_realized_pnl = sum(float(o.realized_pnl) for o in orders if o.order_type == "SELL")
+    total_volume = sum(float(o.total_value) for o in orders)
+    profitable_sells = sum(1 for o in orders if o.order_type == "SELL" and float(o.realized_pnl) > 0)
     
     return {
         "total_trades": len(orders),
@@ -340,7 +351,7 @@ def get_trading_statistics(
         "total_sells": total_sells,
         "total_realized_pnl": round(total_realized_pnl, 2),
         "total_volume": round(total_volume, 2),
-        "win_rate": round((total_sells / len(orders) * 100) if orders else 0, 2)
+        "win_rate": round((profitable_sells / total_sells * 100) if total_sells > 0 else 0, 2)
     }
 
 @router.post("/check-stop-loss")
@@ -364,17 +375,23 @@ def get_pending_orders(
         PendingOrder.status == "PENDING"
     ).order_by(PendingOrder.created_at.desc()).all()
     
+    # Batch-fetch prices for all unique symbols (avoid N+1)
+    unique_symbols = list(set(o.symbol for o in orders))
+    price_map = {}
+    for sym in unique_symbols:
+        price_map[sym] = get_live_price(sym)
+
     result = []
     for order in orders:
-        current_price = get_live_price(order.symbol)
+        current_price = price_map.get(order.symbol, 0.0)
         result.append({
             "id": order.id,
             "symbol": order.symbol,
             "order_type": order.order_type,
             "quantity": order.quantity,
-            "trigger_price": order.trigger_price,
+            "trigger_price": float(order.trigger_price),
             "condition": order.condition,
-            "trailing_percent": order.trailing_percent,
+            "trailing_percent": float(order.trailing_percent) if order.trailing_percent else None,
             "current_price": round(current_price, 2),
             "status": order.status,
             "created_at": order.created_at.isoformat() if order.created_at else None
@@ -441,6 +458,7 @@ def create_pending_order(
         trigger_price=trigger_price,
         condition=condition.upper(),
         trailing_percent=trailing_percent,
+        peak_price=current_price if condition.upper() == "TRAILING_STOP" else None,
         status="PENDING"
     )
     db.add(pending)
@@ -487,40 +505,53 @@ def check_pending_orders(
     db: Session = Depends(get_db)
 ):
     """Check and execute pending orders that meet their trigger conditions."""
+    from datetime import timezone
     
     pending = db.query(PendingOrder).filter(
         PendingOrder.user_id == current_user.id,
         PendingOrder.status == "PENDING"
     ).all()
     
+    unique_symbols = list(set(o.symbol for o in pending))
+    price_map = {sym: get_live_price(sym) for sym in unique_symbols}
+    
     triggered = []
     for order in pending:
-        current_price = get_live_price(order.symbol)
+        current_price = price_map.get(order.symbol, 0.0)
+        if current_price <= 0:
+            continue
+            
         should_trigger = False
+        trigger_p = float(order.trigger_price)
         
-        if order.condition == "STOP_LOSS" and current_price <= order.trigger_price:
+        if order.condition == "STOP_LOSS" and current_price <= trigger_p:
             should_trigger = True
-        elif order.condition == "TAKE_PROFIT" and current_price >= order.trigger_price:
+        elif order.condition == "TAKE_PROFIT" and current_price >= trigger_p:
             should_trigger = True
-        elif order.condition == "TRAILING_STOP":
-            # For trailing stop, check if price dropped by trailing_percent from peak
-            # This is simplified - in production you'd track the peak price
-            trailing_trigger = current_price * (1 - order.trailing_percent / 100)
-            if current_price <= trailing_trigger:
+        elif order.condition == "TRAILING_STOP" and order.trailing_percent:
+            # Track peak price
+            peak = float(order.peak_price) if order.peak_price is not None else current_price
+            if current_price > peak:
+                order.peak_price = current_price
+                peak = current_price
+            
+            trail_pct = float(order.trailing_percent)
+            stop_threshold = peak * (1.0 - trail_pct / 100.0)
+            if current_price <= stop_threshold:
                 should_trigger = True
         
         if should_trigger:
             order.status = "TRIGGERED"
-            order.triggered_at = datetime.now()
+            order.triggered_at = datetime.now(timezone.utc)
             triggered.append({
                 "id": order.id,
                 "symbol": order.symbol,
                 "condition": order.condition,
-                "trigger_price": order.trigger_price,
+                "trigger_price": trigger_p,
                 "current_price": round(current_price, 2)
             })
     
-    if triggered:
+    if triggered or any(o.condition == "TRAILING_STOP" for o in pending):
         db.commit()
     
     return {
@@ -528,4 +559,5 @@ def check_pending_orders(
         "triggered": triggered,
         "triggered_count": len(triggered)
     }
+
 

@@ -38,3 +38,8 @@ export const fetchMe = async () => {
   return res.data;
 };
 
+export const updateProfile = async (profileData) => {
+  const res = await axios.put("/auth/profile", profileData);
+  return res.data;
+};
+

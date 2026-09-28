@@ -115,7 +115,25 @@ const Portfolio = ({ refresh }) => {
   if (!data) {
     return (
       <Card>
-        <CardContent className="text-destructive py-6">{translate("error")}</CardContent>
+        <CardContent className="py-6 text-center space-y-2">
+          <p className="text-muted-foreground text-xs">Portfolio data unavailable</p>
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              autoLoginDemo()
+                .then(() => fetchPortfolioValuation())
+                .then((d) => {
+                  setData(d);
+                  setLoading(false);
+                })
+                .catch(() => setLoading(false));
+            }}
+            className="text-xs text-primary font-medium hover:underline"
+          >
+            Reconnect Demo Account
+          </button>
+        </CardContent>
       </Card>
     );
   }

@@ -7,7 +7,6 @@ const Indicators = () => {
   const indicatorList = [
     { key: "sma", label: "SMA", description: "Simple Moving Average" },
     { key: "ema", label: "EMA", description: "Exponential Moving Average" },
-    { key: "rsi", label: "RSI", description: "Relative Strength Index" },
     { key: "macd", label: "MACD", description: "Moving Average Convergence Divergence" },
     { key: "vwap", label: "VWAP", description: "Volume Weighted Average Price" },
   ];

@@ -186,8 +186,8 @@ def news(symbol: Optional[str] = Query(None, min_length=1)):
     # This endpoint returns lightweight objects for the UI.
     query = symbol or "markets"
     urls = [
-        f"https://query2.finance.yahoo.com/v1/finance/search?q={query}&newsCount=12&quotesCount=0",
-        f"https://query1.finance.yahoo.com/v1/finance/search?q={query}&newsCount=12&quotesCount=0",
+        f"https://query2.finance.yahoo.com/v1/finance/search?q={query}&newsCount=40&quotesCount=0",
+        f"https://query1.finance.yahoo.com/v1/finance/search?q={query}&newsCount=40&quotesCount=0",
     ]
 
     articles: List[Dict[str, Any]] = []
@@ -203,7 +203,7 @@ def news(symbol: Optional[str] = Query(None, min_length=1)):
             if r.status_code != 200:
                 continue
             data = r.json()
-            for n in data.get("news", [])[:12]:
+            for n in data.get("news", [])[:40]:
                 articles.append(
                     {
                         "title": n.get("title") or "",

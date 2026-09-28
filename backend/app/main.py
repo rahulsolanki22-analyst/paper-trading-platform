@@ -1,9 +1,14 @@
+import os
+from dotenv import load_dotenv
+
+# Load .env BEFORE any app imports so DATABASE_URL, JWT_SECRET, etc. are available
+load_dotenv()
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from dotenv import load_dotenv
 import logging
 from fastapi.staticfiles import StaticFiles
 from app.database import Base, engine
@@ -30,8 +35,6 @@ from app.models import (
     diary as diary_model
 )
 
-load_dotenv()
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -40,17 +43,93 @@ logging.basicConfig(
 
 Base.metadata.create_all(bind=engine)
 
+# Auto-seed demo account for instant out-of-the-box paper trading
+from app.database import SessionLocal
+from app.utils.auth import get_password_hash
+
+def _seed_demo_account():
+    try:
+        db = SessionLocal()
+        demo = db.query(user_model.User).filter(user_model.User.email == "demo@example.com").first()
+        if not demo:
+            demo = user_model.User(
+                username="demo",
+                email="demo@example.com",
+                hashed_password=get_password_hash("demo123"),
+                full_name="Demo Trader"
+            )
+            db.add(demo)
+            db.commit()
+            db.refresh(demo)
+            
+            p = portfolio_model.Portfolio(user_id=demo.id, balance=100000.0)
+            db.add(p)
+            db.commit()
+            logging.info("Default demo account (demo@example.com) seeded successfully.")
+            
+        rahul = db.query(user_model.User).filter(user_model.User.email == "rahul@gmail.com").first()
+        if rahul:
+            order_exists = db.query(order_model.OrderHistory).filter(order_model.OrderHistory.user_id == rahul.id).first()
+            if not order_exists:
+                from app.services.demo_seeder import seed_demo_data_for_user
+                seed_demo_data_for_user(db, "rahul@gmail.com")
+                logging.info("Rahul account (rahul@gmail.com) demo data seeded successfully.")
+        db.close()
+    except Exception as e:
+        logging.warning(f"Demo seeding skipped: {e}")
+
+_seed_demo_account()
+
 app = FastAPI(title="AI Paper Trading Backend")
 
-# CORS configuration - must be added before routes
+# CORS configuration - read allowed origins from env
+_cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:3000,http://127.0.0.1:3000")
+_cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=_cors_origins,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Lightweight In-Memory Rate Limiter Middleware
+import time
+from collections import defaultdict
+
+_rate_limits = defaultdict(list)
+_MAX_REQUESTS_PER_MINUTE = 200
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # Allow docs, openapi, health, and static files without restriction
+    path = request.url.path
+    if path.startswith(("/docs", "/openapi.json", "/health", "/uploads")):
+        return await call_next(request)
+
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    
+    # Filter timestamps older than 60s
+    recent_requests = [t for t in _rate_limits[client_ip] if now - t < 60]
+    
+    if len(recent_requests) >= _MAX_REQUESTS_PER_MINUTE:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many requests. Please slow down."},
+            headers={
+                "Access-Control-Allow-Origin": _cors_origins[0] if _cors_origins else "*",
+                "Retry-After": "60",
+            }
+        )
+    
+    recent_requests.append(now)
+    _rate_limits[client_ip] = recent_requests
+    return await call_next(request)
+
 
 # Global exception handlers to ensure CORS headers are always present
 @app.exception_handler(StarletteHTTPException)
@@ -59,7 +138,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         status_code=exc.status_code,
         content={"detail": exc.detail},
         headers={
-            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Origin": _cors_origins[0] if _cors_origins else "*",
             "Access-Control-Allow-Credentials": "true",
         }
     )
@@ -70,7 +149,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": exc.errors()},
         headers={
-            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Origin": _cors_origins[0] if _cors_origins else "*",
             "Access-Control-Allow-Credentials": "true",
         }
     )
@@ -82,7 +161,7 @@ async def general_exception_handler(request: Request, exc: Exception):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error"},
         headers={
-            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Origin": _cors_origins[0] if _cors_origins else "*",
             "Access-Control-Allow-Credentials": "true",
         }
     )
@@ -119,3 +198,19 @@ app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 @app.get("/")
 def root():
     return {"status": "Backend running"}
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint — verifies database connectivity."""
+    from app.database import SessionLocal
+    from sqlalchemy import text
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "database": str(e)}
+        )

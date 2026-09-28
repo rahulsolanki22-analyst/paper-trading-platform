@@ -5,7 +5,7 @@ import useTradingStore from "../../store/tradingStore";
 import useThemeStore from "../../store/themeStore";
 import CompanyDetails from "../CompanyDetails";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Camera } from "lucide-react";
+import { Camera, MousePointer, TrendingUp, Minus, Trash2, PenTool, Sun, Moon } from "lucide-react";
 
 const TIMEFRAMES = [
   { label: "1m", value: "1m" },
@@ -28,6 +28,52 @@ const TradingChart = ({ symbol = "AAPL" }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [takingScreenshot, setTakingScreenshot] = useState(false);
+  const [showToolbar, setShowToolbar] = useState(true);
+  const [chartThemeMode, setChartThemeMode] = useState(currentTheme);
+
+  useEffect(() => {
+    setChartThemeMode(currentTheme);
+  }, [currentTheme]);
+
+  // Drawing states
+  const [activeTool, setActiveTool] = useState(null);
+  const activeToolRef = useRef(null);
+  useEffect(() => {
+    activeToolRef.current = activeTool;
+  }, [activeTool]);
+
+  const [firstPoint, setFirstPoint] = useState(null);
+  const firstPointRef = useRef(null);
+  useEffect(() => {
+    firstPointRef.current = firstPoint;
+  }, [firstPoint]);
+
+  const drawingsRef = useRef({ hLines: [], trendLines: [] });
+
+  const clearDrawings = () => {
+    // Clear Horizontal Price Lines
+    if (seriesRefs.current.candles) {
+      drawingsRef.current.hLines.forEach((line) => {
+        try {
+          seriesRefs.current.candles.removePriceLine(line);
+        } catch (e) {
+          // ignore
+        }
+      });
+    }
+    // Clear Trend Lines (Series)
+    if (chartInstanceRef.current) {
+      drawingsRef.current.trendLines.forEach((s) => {
+        try {
+          chartInstanceRef.current.removeSeries(s);
+        } catch (e) {
+          // ignore
+        }
+      });
+    }
+    drawingsRef.current = { hLines: [], trendLines: [] };
+    setFirstPoint(null);
+  };
 
   const handleScreenshot = () => {
     if (!chartInstanceRef.current) return;
@@ -51,29 +97,35 @@ const TradingChart = ({ symbol = "AAPL" }) => {
     }
   };
 
-  // Update chart options when theme changes
+  // Update chart options when chart theme changes
   useEffect(() => {
     if (!chartInstanceRef.current) return;
+    const isLight = chartThemeMode === "light";
     const activeTheme = useThemeStore.getState().getTheme();
     const colors = activeTheme.colors;
 
+    const chartBg = isLight ? "#ffffff" : (colors.chartBg || "#020617");
+    const chartGrid = isLight ? "#e5e7eb" : (colors.chartGrid || "#1e293b");
+    const chartBorder = isLight ? "#d1d5db" : (colors.chartBorder || "#334155");
+    const chartText = isLight ? "#111827" : (colors.chartText || "#e5e7eb");
+
     chartInstanceRef.current.applyOptions({
       layout: {
-        background: { type: ColorType.Solid, color: colors.chartBg },
-        textColor: colors.chartText,
+        background: { type: ColorType.Solid, color: chartBg },
+        textColor: chartText,
       },
       grid: {
-        vertLines: { color: colors.chartGrid },
-        horzLines: { color: colors.chartGrid },
+        vertLines: { color: chartGrid },
+        horzLines: { color: chartGrid },
       },
       rightPriceScale: {
-        borderColor: colors.chartBorder,
+        borderColor: chartBorder,
       },
       timeScale: {
-        borderColor: colors.chartBorder,
+        borderColor: chartBorder,
       },
     });
-  }, [currentTheme]);
+  }, [chartThemeMode]);
 
   // Initialize chart
   useEffect(() => {
@@ -81,21 +133,27 @@ const TradingChart = ({ symbol = "AAPL" }) => {
 
     const activeTheme = useThemeStore.getState().getTheme();
     const colors = activeTheme.colors;
+    const isLight = useThemeStore.getState().currentTheme === "light";
+
+    const chartBg = isLight ? "#ffffff" : (colors.chartBg || "#020617");
+    const chartText = isLight ? "#111827" : (colors.chartText || "#e5e7eb");
+    const chartGrid = isLight ? "#e5e7eb" : (colors.chartGrid || "#1e293b");
+    const chartBorder = isLight ? "#d1d5db" : (colors.chartBorder || "#334155");
 
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth,
       height: 600,
       layout: {
-        background: { type: ColorType.Solid, color: colors.chartBg },
-        textColor: colors.chartText,
+        background: { type: ColorType.Solid, color: chartBg },
+        textColor: chartText,
         fontSize: 12,
       },
       grid: {
-        vertLines: { color: colors.chartGrid, style: 1 },
-        horzLines: { color: colors.chartGrid, style: 1 },
+        vertLines: { color: chartGrid, style: 1 },
+        horzLines: { color: chartGrid, style: 1 },
       },
       rightPriceScale: {
-        borderColor: colors.chartBorder,
+        borderColor: chartBorder,
         scaleMargins: {
           top: 0.1,
           bottom: 0.1,
@@ -161,6 +219,55 @@ const TradingChart = ({ symbol = "AAPL" }) => {
       }
     });
 
+    // Chart click handling for drawing tools
+    chart.subscribeClick((param) => {
+      const tool = activeToolRef.current;
+      if (!tool || !param.point || !param.time) return;
+
+      const cSeries = seriesRefs.current.candles;
+      if (!cSeries) return;
+
+      const price = cSeries.coordinateToPrice(param.point.y);
+      if (price === null) return;
+
+      const time = param.time;
+
+      if (tool === "hline") {
+        const line = cSeries.createPriceLine({
+          price: price,
+          color: "#3b82f6",
+          lineWidth: 2,
+          lineStyle: 2, // Dashed
+          axisLabelVisible: true,
+          title: "H-Line",
+        });
+        drawingsRef.current.hLines.push(line);
+        setActiveTool(null); // Reset tool to cursor
+      } else if (tool === "trendline") {
+        const fp = firstPointRef.current;
+        if (!fp) {
+          // Store first point
+          setFirstPoint({ time, price });
+        } else {
+          // Draw trend line
+          const trendSeries = chart.addLineSeries({
+            color: "#22c55e",
+            lineWidth: 2,
+            crosshairMarkerVisible: false,
+            lastValueVisible: false,
+            priceLineVisible: false,
+          });
+          trendSeries.setData([
+            { time: fp.time, value: fp.price },
+            { time: time, value: price },
+          ]);
+          drawingsRef.current.trendLines.push(trendSeries);
+          setFirstPoint(null);
+          setActiveTool(null); // Reset tool to cursor
+        }
+      }
+    });
+
     // Resize handler
     const resize = () => {
       if (chartRef.current && chartInstanceRef.current) {
@@ -186,6 +293,7 @@ const TradingChart = ({ symbol = "AAPL" }) => {
   useEffect(() => {
     if (!chartInstanceRef.current || !seriesRefs.current.candles) return;
 
+    clearDrawings();
     setLoading(true);
     setError(null);
     fetchCandles(symbol, timeframe)
@@ -414,15 +522,36 @@ const TradingChart = ({ symbol = "AAPL" }) => {
               </button>
             ))}
           </div>
-          <button
-            onClick={handleScreenshot}
-            disabled={takingScreenshot || !!error}
-            className="flex items-center justify-center gap-2 rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
-            title="Take Screenshot"
-          >
-            <Camera className="h-4 w-4" />
-            <span className="hidden sm:inline">{takingScreenshot ? "Capturing..." : "Screenshot"}</span>
-          </button>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setShowToolbar(!showToolbar)}
+              disabled={!!error}
+              className="flex items-center justify-center rounded-lg p-2 transition-colors bg-transparent border-none text-black hover:bg-zinc-200/50"
+              title={showToolbar ? "Hide Drawing Toolbar" : "Show Drawing Toolbar"}
+            >
+              <PenTool className="h-5 w-5 text-black" />
+            </button>
+            <button
+              onClick={() => setChartThemeMode(chartThemeMode === "light" ? "dark" : "light")}
+              disabled={!!error}
+              className="flex items-center justify-center rounded-lg p-2 transition-colors bg-transparent border-none text-black hover:bg-zinc-200/50"
+              title={chartThemeMode === "light" ? "Switch to Dark Chart" : "Switch to Light Chart"}
+            >
+              {chartThemeMode === "light" ? (
+                <Moon className="h-5 w-5 text-black" />
+              ) : (
+                <Sun className="h-5 w-5 text-black" />
+              )}
+            </button>
+            <button
+              onClick={handleScreenshot}
+              disabled={takingScreenshot || !!error}
+              className="flex items-center justify-center rounded-lg p-2 transition-colors bg-transparent border-none text-black hover:bg-zinc-200/50 disabled:opacity-50"
+              title="Take Screenshot"
+            >
+              <Camera className="h-5 w-5 text-black" />
+            </button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-4">
@@ -451,12 +580,106 @@ const TradingChart = ({ symbol = "AAPL" }) => {
           </div>
         ) : null}
 
-        {!error ? <div ref={chartRef} style={{ height: "600px", width: "100%" }} /> : null}
-        {error ? (
-          <div className="flex items-center justify-center" style={{ height: "600px", width: "100%" }}>
-            <div className="text-muted-foreground text-center text-sm">Chart data unavailable</div>
+        <div className="flex gap-4">
+          {/* Drawing Toolbar */}
+          {!error && showToolbar && (
+            <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-zinc-900/60 p-2.5 h-[600px] justify-start items-center shadow-lg backdrop-blur">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTool(null);
+                  setFirstPoint(null);
+                }}
+                className={`rounded-lg p-2.5 transition-colors ${
+                  activeTool === null
+                    ? "bg-white text-black font-semibold"
+                    : "text-muted-foreground hover:bg-white/10 hover:text-white"
+                }`}
+                title="Cursor Mode"
+              >
+                <MousePointer className="h-5 w-5" />
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTool("trendline");
+                  setFirstPoint(null);
+                }}
+                className={`rounded-lg p-2.5 transition-colors ${
+                  activeTool === "trendline"
+                    ? "bg-white text-black font-semibold"
+                    : "text-muted-foreground hover:bg-white/10 hover:text-white"
+                }`}
+                title="Trend Line Tool"
+              >
+                <TrendingUp className="h-5 w-5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTool("hline");
+                  setFirstPoint(null);
+                }}
+                className={`rounded-lg p-2.5 transition-colors ${
+                  activeTool === "hline"
+                    ? "bg-white text-black font-semibold"
+                    : "text-muted-foreground hover:bg-white/10 hover:text-white"
+                }`}
+                title="Horizontal Line Tool"
+              >
+                <Minus className="h-5 w-5" />
+              </button>
+
+              <div className="w-6 border-b border-white/10 my-1" />
+
+              <button
+                type="button"
+                onClick={clearDrawings}
+                className="rounded-lg p-2.5 text-muted-foreground hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                title="Clear All Drawings"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+
+          {/* Chart Area */}
+          <div className="flex-1 min-w-0 relative">
+            {!error ? <div ref={chartRef} style={{ height: "600px", width: "100%" }} /> : null}
+            
+            {/* Visual Prompts for drawing mode */}
+            {activeTool && (
+              <div className="absolute top-4 left-4 z-10 rounded-lg bg-zinc-950/90 border border-white/10 px-3.5 py-1.5 text-xs text-white backdrop-blur flex items-center gap-2 shadow-xl">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>
+                  {activeTool === "hline"
+                    ? "Click on the chart to place a Horizontal Line"
+                    : firstPoint
+                    ? "Click to place the end point of the Trend Line"
+                    : "Click to place the start point of the Trend Line"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTool(null);
+                    setFirstPoint(null);
+                  }}
+                  className="ml-2 text-muted-foreground hover:text-white font-bold"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            
+            {error ? (
+              <div className="flex items-center justify-center border border-dashed border-white/10 rounded-xl" style={{ height: "600px", width: "100%" }}>
+                <div className="text-muted-foreground text-center text-sm">Chart data unavailable</div>
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
 
         <CompanyDetails symbol={symbol} />
       </CardContent>

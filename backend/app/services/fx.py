@@ -19,8 +19,11 @@ try:
 except Exception:  # pragma: no cover
     yf = None
 
-# Simple in-process cache for FX rates to INR
-_fx_cache: dict[str, tuple[float, float]] = {}
+from collections import OrderedDict
+
+# Simple in-process cache for FX rates to INR (max 100 entries)
+_MAX_FX_CACHE = 100
+_fx_cache: OrderedDict = OrderedDict()
 _fx_ttl_seconds = 600  # 10 minutes
 
 
@@ -98,6 +101,8 @@ def fx_to_inr_rate(currency: str) -> float:
         logger.warning("FX rate unavailable for %s, falling back to 1.0", pair)
         rate = 1.0
 
+    if len(_fx_cache) >= _MAX_FX_CACHE:
+        _fx_cache.popitem(last=False)
     _fx_cache[key] = (float(rate), now)
     return float(rate)
 

@@ -87,14 +87,17 @@ export default function AppNavbar() {
         <div className="hidden items-center gap-4 md:flex">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3 border-l border-gray-200 pl-4">
-              <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5">
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs font-bold text-white">
                   {user.username?.charAt(0)?.toUpperCase() || "U"}
                 </div>
                 <span className="text-sm font-medium text-black max-w-[100px] truncate">
                   {user.username}
                 </span>
-              </div>
+              </Link>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -178,14 +181,18 @@ export default function AppNavbar() {
                 {isAuthenticated && user ? (
                   <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <Link
+                        to="/profile"
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+                      >
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-xs font-bold text-white">
                           {user.username?.charAt(0)?.toUpperCase() || "U"}
                         </div>
                         <span className="text-sm font-medium text-black truncate max-w-[100px]">
                           {user.username}
                         </span>
-                      </div>
+                      </Link>
                       <button
                         type="button"
                         onClick={handleLogout}

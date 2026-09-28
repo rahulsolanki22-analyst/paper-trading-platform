@@ -40,7 +40,8 @@ A modern, responsive paper trading platform to simulate stock trading, analyze p
 - **CORS** – Cross-origin requests
 
 ### Data & Auth
-- **SQLite** – Development database (`backend/app/paper_trading.db`)
+- **PostgreSQL** – Primary database (via `psycopg2-binary`)
+- **SQLite** – Fallback for quick local dev (auto-detected)
 - **JWT** – Auth tokens (access)
 - **passlib/bcrypt** – Password hashing
 - **yfinance** – Quotes, FX, previous close
@@ -75,6 +76,7 @@ ai-paper-trading-platform/
 ## Prerequisites
 - Node.js 18+
 - Python 3.10+
+- PostgreSQL 14+ (installed and running)
 - Git
 
 ## Installation & Setup
@@ -89,13 +91,19 @@ ai-paper-trading-platform/
    ```powershell
    pip install -r requirements.txt
    ```
-3. Environment variables (create `backend/app/.env` if needed):
+3. Create the PostgreSQL database:
+   ```powershell
+   psql -U postgres -c "CREATE DATABASE paper_trading;"
+   ```
+4. Environment variables (create `backend/.env` if needed):
    ```env
+   DATABASE_URL=postgresql://postgres:your_password@localhost:5432/paper_trading
    JWT_SECRET=your-secret-key
    JWT_ALGORITHM=HS256
    CORS_ORIGINS=http://localhost:5174
    ```
-4. Run the API server:
+   > **Note:** If `DATABASE_URL` is not set, the app falls back to SQLite automatically.
+5. Run the API server:
    ```powershell
    uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
    ```

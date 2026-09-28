@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const WS_URL = "ws://127.0.0.1:8000/api/markets/ws/markets-hub";
+const _API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const WS_URL = _API.replace(/^http/, "ws") + "/api/markets/ws/markets-hub";
 
 const TICKER_ITEMS = [
   { symbol: "ES=F", label: "S&P Futures" },
@@ -42,40 +43,67 @@ function formatPct(v) {
   return `${sign}${v.toFixed(2)}%`;
 }
 
-function Sparkline({ points = [], stroke = "#22c55e" }) {
+function Sparkline({ points = [], stroke = "#22c55e", symbol = "" }) {
   const w = 120;
   const h = 28;
-  const data = Array.isArray(points) ? points : [];
-  if (data.length < 2) return <div className="h-[28px] w-[120px] rounded-sm bg-white/5" />;
+  const rawData = Array.isArray(points) ? points : [];
+  // Use data or fallback smooth curve for visual consistency
+  const data = rawData.length >= 2 ? rawData : [10, 12, 11, 14, 13, 16, 15, 18, 17, 19];
 
   const min = Math.min(...data);
   const max = Math.max(...data);
   const span = max - min || 1;
   const step = w / (data.length - 1);
 
-  const d = data
-    .map((val, i) => {
-      const x = i * step;
-      const y = h - ((val - min) / span) * (h - 3);
-      return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(" ");
+  const pointsArr = data.map((val, i) => {
+    const x = i * step;
+    const y = h - 3 - ((val - min) / span) * (h - 6);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  const pathD = `M ${pointsArr.join(" L ")}`;
+  const areaD = `M 0,${h} L ${pointsArr.join(" L ")} L ${w},${h} Z`;
+  const cleanId = String(symbol || "default").replace(/[^a-zA-Z0-9]/g, "");
+  const gradientId = `sparkline-grad-${cleanId}`;
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="drop-shadow-sm" aria-hidden="true">
-      <path d={d} fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-    </svg>
+    <div className="h-[28px] w-full overflow-hidden">
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        className="overflow-visible"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={stroke} stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        <path d={areaD} fill={`url(#${gradientId})`} />
+        <path
+          d={pathD}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
   );
 }
 
 function MovementBadge({ changePct }) {
   const isUp = typeof changePct === "number" ? changePct >= 0 : Number(changePct) >= 0;
   const cls = isUp
-    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-    : "border-red-500/40 bg-red-500/10 text-red-300";
+    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    : "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400";
 
   return (
-    <Badge variant="secondary" className={cn("border", cls)}>
+    <Badge variant="secondary" className={cn("border font-semibold", cls)}>
       {typeof changePct === "number" && Number.isFinite(changePct) ? formatPct(changePct) : "—"}
     </Badge>
   );
@@ -102,6 +130,34 @@ export default function MarketsHub() {
 
   const [loading, setLoading] = useState(true);
   const [tickerBusy, setTickerBusy] = useState(true);
+
+  // News topic search
+  const [newsTopicInput, setNewsTopicInput] = useState("");
+  const [activeNewsTopic, setActiveNewsTopic] = useState("");
+  const [newsLoading, setNewsLoading] = useState(false);
+
+  const handleNewsSearch = async (topic) => {
+    const term = (topic || "").trim();
+    setNewsLoading(true);
+    try {
+      const resp = await axios.get("/api/markets/news", {
+        params: term ? { symbol: term } : {},
+      });
+      const articles = resp.data?.articles || resp.data || [];
+      setNews(articles);
+      setFeatured(articles[0] || null);
+      setActiveNewsTopic(term);
+    } catch (err) {
+      console.error("Failed to search news:", err);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
+  const handleClearNewsSearch = () => {
+    setNewsTopicInput("");
+    handleNewsSearch("");
+  };
 
   // Quote lookup
   const [searchQ, setSearchQ] = useState("");
@@ -321,7 +377,9 @@ export default function MarketsHub() {
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const resp = await axios.get(`/api/markets/news`);
+        const resp = await axios.get(`/api/markets/news`, {
+          params: activeNewsTopic ? { symbol: activeNewsTopic } : {},
+        });
         const articles = resp.data?.articles || resp.data || [];
         setNews(Array.isArray(articles) ? articles : []);
       } catch {
@@ -330,7 +388,7 @@ export default function MarketsHub() {
     }, 30000);
 
     return () => clearInterval(id);
-  }, [setNews]);
+  }, [setNews, activeNewsTopic]);
 
 
   useEffect(() => {
@@ -366,6 +424,13 @@ export default function MarketsHub() {
     const all = Array.isArray(news) ? news : [];
     return all.slice(1, 6);
   }, [news]);
+  const liveNews = useMemo(() => {
+    const all = Array.isArray(news) ? news : [];
+    if (all.length > 6) {
+      return all.slice(6, 40);
+    }
+    return all.slice(1, 40);
+  }, [news]);
 
   const refreshWatchlistPreview = async () => {
     try {
@@ -384,35 +449,52 @@ export default function MarketsHub() {
   return (
     <div className="mx-auto max-w-7xl">
       {/* Top ticker bar */}
-      <div className="sticky top-0 z-50 -mx-4 mb-4 border-b border-border bg-background/60 backdrop-blur">
-        <div className="flex items-center gap-3 overflow-x-auto px-4 py-2">
+      <div className="sticky top-0 z-50 -mx-4 mb-4 border-b border-border bg-background/80 backdrop-blur-md">
+        <div className="flex items-center gap-3 overflow-x-auto px-4 py-2.5 scrollbar-none">
           {TICKER_ITEMS.map((item) => {
             const it = indicesBySymbol.get(item.symbol);
             const price = it?.native_price;
             const ch = it?.change_pct;
             const up = Number(ch) >= 0;
+            const strokeColor = up ? "#10b981" : "#f43f5e";
 
             return (
               <button
                 key={item.symbol}
                 type="button"
                 onClick={() => goToTrade(item.symbol)}
-                className="group flex min-w-[220px] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-2 text-left transition-all hover:bg-white/10"
+                className="group flex min-w-[200px] shrink-0 flex-col justify-between rounded-xl border border-border bg-card p-3 text-left transition-all hover:bg-muted/50 hover:border-border/80 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:border-white/20 shadow-sm"
               >
-                <div className="min-w-0">
-                  <div className="text-xs text-muted-foreground">{item.label}</div>
-                  <div className="font-mono text-sm">{item.symbol}</div>
-                </div>
-
-                <div className="ml-auto flex items-center gap-3">
-                  <div className={cn("text-sm font-semibold tabular-nums transition-colors", up ? "text-emerald-300" : "text-red-300")}>
-                    {typeof price === "number" ? formatPrice(price) : "—"}
-                  </div>
+                {/* Header: Label & Movement Badge */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-xs font-medium text-muted-foreground">
+                    {item.label}
+                  </span>
                   <MovementBadge changePct={typeof ch === "number" ? ch : 0} />
                 </div>
 
-                <div className="opacity-90 transition-opacity group-hover:opacity-100">
-                  <Sparkline points={it?.sparkline || []} stroke={up ? "#22c55e" : "#ef4444"} />
+                {/* Price & Symbol Row */}
+                <div className="mt-2 flex items-baseline justify-between gap-2">
+                  <span
+                    className={cn(
+                      "font-mono text-base font-bold tabular-nums tracking-tight transition-colors",
+                      up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                    )}
+                  >
+                    {typeof price === "number" ? formatPrice(price) : "—"}
+                  </span>
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                    {item.symbol}
+                  </span>
+                </div>
+
+                {/* Sparkline Chart Area */}
+                <div className="mt-2.5 w-full opacity-85 transition-opacity group-hover:opacity-100">
+                  <Sparkline
+                    points={it?.sparkline || []}
+                    stroke={strokeColor}
+                    symbol={item.symbol}
+                  />
                 </div>
               </button>
             );
@@ -428,11 +510,78 @@ export default function MarketsHub() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden rounded-xl border border-white/10 bg-white/5 px-3 py-2 sm:block">
+          <div className="hidden rounded-xl border border-border bg-card px-3 py-2 sm:block">
             <div className="text-xs text-muted-foreground">{connection.status === "connected" ? "Live" : "Connecting"}</div>
           </div>
         </div>
       </div>
+
+      {/* News Topic Search Bar */}
+      <Card className="mb-5">
+        <CardContent className="py-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleNewsSearch(newsTopicInput);
+            }}
+            className="flex flex-col gap-3 sm:flex-row sm:items-center"
+          >
+            <div className="relative flex-1">
+              <Input
+                value={newsTopicInput}
+                onChange={(e) => setNewsTopicInput(e.target.value)}
+                placeholder="Search news topic (e.g. gold, crude oil, stocks, bitcoin, tech)..."
+                className="h-11 rounded-xl bg-background border-input text-foreground placeholder:text-muted-foreground"
+              />
+              {activeNewsTopic && (
+                <button
+                  type="button"
+                  onClick={handleClearNewsSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs font-semibold transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                disabled={newsLoading}
+                className="h-11 rounded-xl px-6 bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 border border-white/10"
+              >
+                {newsLoading ? "Searching..." : "Search Topic"}
+              </Button>
+              {activeNewsTopic && (
+                <Badge variant="secondary" className="flex items-center gap-1.5 h-11 px-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Active: {activeNewsTopic}
+                </Badge>
+              )}
+            </div>
+          </form>
+          <div className="flex flex-wrap gap-2 mt-3 items-center">
+            <span className="text-xs text-muted-foreground">Popular topics:</span>
+            {["gold", "crude oil", "stocks", "bitcoin", "tech", "fed"].map((topic) => (
+              <button
+                key={topic}
+                type="button"
+                onClick={() => {
+                  setNewsTopicInput(topic);
+                  handleNewsSearch(topic);
+                }}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs border transition-all",
+                  activeNewsTopic.toLowerCase() === topic.toLowerCase()
+                    ? "border-black/30 bg-black/10 text-black dark:border-white/40 dark:bg-white/20 dark:text-white font-medium"
+                    : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:text-black dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:hover:border-white/20 dark:hover:text-white"
+                )}
+              >
+                {topic.charAt(0).toUpperCase() + topic.slice(1)}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 3-column responsive layout */}
       <div className="grid gap-4 lg:grid-cols-3">
@@ -453,9 +602,18 @@ export default function MarketsHub() {
                 </div>
               ) : featuredNews ? (
                 <>
-                  <div className="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-white/10 to-white/0">
-                    <div className="aspect-[16/7] w-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_55%)]" />
-                  </div>
+                  {(featuredNews.image || featuredNews.urlToImage || featuredNews.thumbnail || featuredNews.image_url) ? (
+                    <div className="relative overflow-hidden rounded-xl border border-white/10 mb-3 bg-black/20">
+                      <img
+                        src={featuredNews.image || featuredNews.urlToImage || featuredNews.thumbnail || featuredNews.image_url}
+                        alt={featuredNews.title || "News headline"}
+                        className="aspect-[16/9] w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.parentElement.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ) : null}
 
                   <div>
                     <div className="text-lg font-semibold leading-snug">{featuredNews.title || "Market headline"}</div>
@@ -531,9 +689,9 @@ export default function MarketsHub() {
                       </div>
                     ))}
                   </div>
-                ) : news?.length ? (
+                ) : liveNews?.length ? (
                   <div className="space-y-2">
-                    {news.slice(0, 40).map((n, idx) => (
+                    {liveNews.map((n, idx) => (
                       <button
                         key={`${n.title}-${idx}`}
                         type="button"
@@ -561,88 +719,6 @@ export default function MarketsHub() {
                 ) : (
                   <div className="py-10 text-center text-sm text-muted-foreground">No live news right now.</div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-white/10 bg-white/5 backdrop-blur">
-            <CardHeader>
-              <CardTitle className="text-base">Market Movers</CardTitle>
-            </CardHeader>
-
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">Top Gainers</div>
-                {(topGainers || []).length ? (
-                  (topGainers || []).map((m) => {
-                    const up = Number(m.change_pct) >= 0;
-                    return (
-                      <button
-                        key={m.symbol}
-                        type="button"
-                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-left transition-all hover:bg-white/10"
-                        onClick={() => goToTrade(m.symbol)}
-                      >
-                        <div className="min-w-0">
-                          <div className="font-mono text-sm">{m.symbol}</div>
-                          <div className="text-xs text-muted-foreground">{m.name || ""}</div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <div className={cn("text-sm font-semibold tabular-nums", up ? "text-emerald-300" : "text-red-300")}>
-                            {formatPrice(m.native_price)}
-                          </div>
-                          <MovementBadge changePct={m.change_pct} />
-                        </div>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-muted-foreground">—</div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-  <div className="text-xs text-muted-foreground">Top Losers</div>
-
-  {(topLosers || []).length ? (
-    (topLosers || []).map((m) => {
-      const up = Number(m.change_pct) >= 0;
-
-      return (
-        <button
-          key={m.symbol}
-          type="button"
-          className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-left transition-all hover:bg-white/10"
-          onClick={() => goToTrade(m.symbol)}
-        >
-          <div className="min-w-0">
-            <div className="font-mono text-sm">{m.symbol}</div>
-            <div className="text-xs text-muted-foreground">
-              {m.name || ""}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                "text-sm font-semibold tabular-nums",
-                up ? "text-emerald-300" : "text-red-300"
-              )}
-            >
-              {formatPrice(m.native_price)}
-            </div>
-
-            <MovementBadge changePct={m.change_pct} />
-          </div>
-        </button>
-      );
-    })
-  ) : (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-muted-foreground">
-      —
-    </div>
-  )}
               </div>
             </CardContent>
           </Card>

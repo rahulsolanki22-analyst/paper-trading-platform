@@ -1,8 +1,8 @@
-import yfinance as yf
 from sqlalchemy.orm import Session
 from app.models.trade import Trade
 from app.models.portfolio import Portfolio
 from app.services.market_data import get_live_price
+from app.services.fx import detect_currency, fx_to_inr_rate
 
 def check_stop_loss(user_id: int = None, db: Session = None):
     """
@@ -34,16 +34,21 @@ def check_stop_loss(user_id: int = None, db: Session = None):
             if trade.stop_loss is None:
                 continue
 
-            # Get current price
+            # Get current price in native currency
             price = get_live_price(trade.symbol)
             if price == 0.0:
                 continue
 
-            if price <= trade.stop_loss:
-                # Trigger stop-loss
-                pnl = (price - trade.buy_price) * trade.quantity
-                trade.realized_pnl += pnl
-                portfolio.balance += price * trade.quantity
+            if price <= float(trade.stop_loss):
+                # Convert to INR for portfolio balance
+                native_currency = detect_currency(trade.symbol)
+                fx_rate = fx_to_inr_rate(native_currency)
+                price_inr = price * fx_rate
+                buy_price_inr = float(trade.buy_price) * fx_rate
+                
+                pnl = (price_inr - buy_price_inr) * trade.quantity
+                trade.realized_pnl = float(trade.realized_pnl) + pnl
+                portfolio.balance = float(portfolio.balance) + (price_inr * trade.quantity)
                 db.delete(trade)
 
         db.commit()

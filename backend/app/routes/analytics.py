@@ -37,41 +37,48 @@ def get_analytics_summary(
     total_sells = len(sell_orders)
     
     # P&L calculations
-    total_realized_pnl = sum(o.realized_pnl for o in sell_orders)
-    winning_trades = [o for o in sell_orders if o.realized_pnl > 0]
-    losing_trades = [o for o in sell_orders if o.realized_pnl < 0]
+    total_realized_pnl = sum(float(o.realized_pnl) for o in sell_orders)
+    winning_trades = [o for o in sell_orders if float(o.realized_pnl) > 0]
+    losing_trades = [o for o in sell_orders if float(o.realized_pnl) < 0]
     
     win_count = len(winning_trades)
     loss_count = len(losing_trades)
     win_rate = (win_count / len(sell_orders) * 100) if sell_orders else 0
     
     # Average win/loss
-    avg_win = sum(o.realized_pnl for o in winning_trades) / win_count if win_count else 0
-    avg_loss = sum(o.realized_pnl for o in losing_trades) / loss_count if loss_count else 0
+    avg_win = sum(float(o.realized_pnl) for o in winning_trades) / win_count if win_count else 0
+    avg_loss = sum(float(o.realized_pnl) for o in losing_trades) / loss_count if loss_count else 0
     
     # Profit factor
-    total_wins = sum(o.realized_pnl for o in winning_trades)
-    total_losses = abs(sum(o.realized_pnl for o in losing_trades))
-    profit_factor = total_wins / total_losses if total_losses > 0 else 0
+    total_wins = sum(float(o.realized_pnl) for o in winning_trades)
+    total_losses = abs(sum(float(o.realized_pnl) for o in losing_trades))
+    if total_losses > 0:
+        profit_factor = round(total_wins / total_losses, 2)
+    elif total_wins > 0:
+        profit_factor = None  # Infinite profit factor (no losses)
+    else:
+        profit_factor = 0.0
     
     # Get current portfolio value
     portfolio = db.query(Portfolio).filter(Portfolio.user_id == current_user.id).first()
-    cash_balance = portfolio.balance if portfolio else 100000
+    cash_balance = float(portfolio.balance) if portfolio else 100000.0
     
     # Calculate holdings value
     trades = db.query(Trade).filter(Trade.user_id == current_user.id).all()
-    holdings_value = 0
+    holdings_value = 0.0
     for trade in trades:
         current_price = get_live_price(trade.symbol)
         holdings_value += trade.quantity * current_price
     
     total_portfolio_value = cash_balance + holdings_value
-    total_return = total_portfolio_value - 100000  # Initial capital
-    total_return_percent = (total_return / 100000) * 100
+    total_return = total_portfolio_value - 100000.0  # Initial capital
+    total_return_percent = (total_return / 100000.0) * 100.0
     
-    # Best and worst trades
-    best_trade = max(sell_orders, key=lambda o: o.realized_pnl) if sell_orders else None
-    worst_trade = min(sell_orders, key=lambda o: o.realized_pnl) if sell_orders else None
+    # Best and worst trades (filter by win/loss status so they make sense in UI)
+    winning_sells = [o for o in sell_orders if float(o.realized_pnl) > 0]
+    losing_sells = [o for o in sell_orders if float(o.realized_pnl) < 0]
+    best_trade = max(winning_sells, key=lambda o: float(o.realized_pnl)) if winning_sells else None
+    worst_trade = min(losing_sells, key=lambda o: float(o.realized_pnl)) if losing_sells else None
     
     return {
         "total_trades": total_trades,
@@ -83,7 +90,7 @@ def get_analytics_summary(
         "total_realized_pnl": round(total_realized_pnl, 2),
         "average_win": round(avg_win, 2),
         "average_loss": round(avg_loss, 2),
-        "profit_factor": round(profit_factor, 2),
+        "profit_factor": profit_factor,
         "total_portfolio_value": round(total_portfolio_value, 2),
         "total_return": round(total_return, 2),
         "total_return_percent": round(total_return_percent, 2),
@@ -91,12 +98,12 @@ def get_analytics_summary(
         "holdings_value": round(holdings_value, 2),
         "best_trade": {
             "symbol": best_trade.symbol,
-            "pnl": round(best_trade.realized_pnl, 2),
+            "pnl": round(float(best_trade.realized_pnl), 2),
             "date": best_trade.timestamp.isoformat() if best_trade.timestamp else None
         } if best_trade else None,
         "worst_trade": {
             "symbol": worst_trade.symbol,
-            "pnl": round(worst_trade.realized_pnl, 2),
+            "pnl": round(float(worst_trade.realized_pnl), 2),
             "date": worst_trade.timestamp.isoformat() if worst_trade.timestamp else None
         } if worst_trade else None
     }
